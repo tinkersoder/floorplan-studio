@@ -4,6 +4,25 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Standalone browser-based Floorplan Studio for Home Assistant",
+  "author": "Tinker Söder",
+  "license": "MIT",
+  "homepage": "https://github.com/tinkersoder/floorplan-studio#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tinkersoder/floorplan-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tinkersoder/floorplan-studio/issues"
+  },
+  "keywords": [
+    "home-assistant",
+    "floorplan",
+    "ha-floorplan",
+    "picture-elements",
+    "dashboard",
+    "svg",
+    "lovelace"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

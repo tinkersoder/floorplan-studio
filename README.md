@@ -8,7 +8,8 @@ Drop in a photo or 3D render of your home, trace rooms and walls, place and conf
 entity markers, preview them live against your HA, and export a dashboard-ready card —
 either for the HACS **ha-floorplan** card or the native **Picture Elements** card.
 
-![status](https://img.shields.io/badge/build-passing-brightgreen) <!-- local badge, not fetched -->
+![status](https://img.shields.io/badge/build-passing-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
@@ -105,3 +106,11 @@ JSON is the complete project (floors, background data URIs, markers, rooms, wall
 
 - [`USER_GUIDE.md`](USER_GUIDE.md) — connecting HA, designing a floorplan, and adding the
   export to a dashboard (both ha-floorplan and picture-elements paths).
+
+## Author
+
+Built by **Tinker Söder** ([@tinkersoder](https://github.com/tinkersoder)).
+
+## License
+
+Released under the [MIT License](LICENSE). © 2026 Tinker Söder.
