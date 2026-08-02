@@ -1,4 +1,5 @@
 node_modules
 dist
+dist-hacs
 *.local
 .DS_Store

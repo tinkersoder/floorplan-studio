@@ -23,6 +23,30 @@ readouts overlaid on a 3D render of the home.*
 
 ---
 
+## Install in Home Assistant (HACS)
+
+Run the full editor as a dashboard card, installed and updated through HACS — no
+manual hosting.
+
+1. **HACS → ⋮ (top-right) → Custom repositories.**
+2. Repository: `https://github.com/tinkersoder/floorplan-studio` — Type: **Dashboard**. Click **Add**.
+3. Open the new **Floorplan Studio** entry → **Download**. HACS registers the plugin JS
+   as a Lovelace resource for you.
+4. Hard-reload your browser (Ctrl-F5 / Cmd-Shift-R).
+5. Edit a dashboard → **Add card → Manual** (or pick *Floorplan Studio* from the card
+   list) and use:
+
+   ```yaml
+   type: custom:floorplan-studio-card
+   # height: 90vh   # optional — defaults to 85vh
+   ```
+
+The card renders the whole editor inside the dashboard. Projects are stored in your
+browser (IndexedDB), exactly like the standalone app. Prefer a full-page experience or
+no HACS? The standalone build below still works.
+
+---
+
 ## Features
 
 - **Canvas** — upload / paste / drag-drop a background; adjust opacity, scale, position,
