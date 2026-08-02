@@ -59,6 +59,62 @@ exported ha-floorplan SVG), Zustand + Immer for state and undo/redo, `idb` for I
 `js-yaml` for export, `home-assistant-js-websocket` for the optional HA link, and bundled
 `@mdi/js` icon path data. Everything is bundled — no runtime CDN requests.
 
+## Prerequisites
+
+You need **Node.js 18+** (npm ships with it) and **Git**. The `npm` commands below are
+identical on Windows, macOS, and Linux — only the one-time tool install differs.
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+Using [winget](https://learn.microsoft.com/windows/package-manager/) (built into Windows 10/11):
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+winget install Git.Git
+```
+
+Or download the installers directly: [Node.js LTS](https://nodejs.org/en/download) and
+[Git for Windows](https://git-scm.com/download/win). Then run the commands below in
+**PowerShell** or **Windows Terminal**.
+</details>
+
+<details>
+<summary><strong>macOS</strong></summary>
+
+Using [Homebrew](https://brew.sh):
+
+```bash
+brew install node git
+```
+
+Or download the [Node.js LTS installer](https://nodejs.org/en/download) (Git is included
+with the Xcode Command Line Tools: `xcode-select --install`). Then run the commands below
+in **Terminal**.
+</details>
+
+<details>
+<summary><strong>Linux</strong></summary>
+
+Install from your distro (or [nodejs.org](https://nodejs.org/en/download)):
+
+```bash
+# Debian / Ubuntu
+sudo apt install nodejs npm git
+# Fedora
+sudo dnf install nodejs git
+# Arch
+sudo pacman -S nodejs npm git
+```
+</details>
+
+## Get the code
+
+```bash
+git clone https://github.com/tinkersoder/floorplan-studio.git
+cd floorplan-studio
+```
+
 ## Run (development)
 
 ```bash
@@ -66,7 +122,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5178.
+Open http://localhost:5178 in your browser. Same on all platforms.
 
 ## Build (static site)
 
