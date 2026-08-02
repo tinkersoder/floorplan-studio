@@ -7,6 +7,8 @@ export interface ExportOptions {
   image: 'embed' | 'reference';
   imageBaseName: string; // e.g. "myfloor" -> myfloor.png + myfloor.svg
   localDir: string; // e.g. "floorplan" -> /local/floorplan/...
+  /** cache-busting token appended to /local URLs (HA caches /local for 31 days) */
+  cacheBust?: string;
 }
 
 export const esc = (s: string) =>
@@ -27,9 +29,11 @@ export function roomElementId(name: string, id: string): string {
   return `room_${slug(name)}_${id}`;
 }
 
+const bust = (opts: ExportOptions) => (opts.cacheBust ? `?v=${opts.cacheBust}` : '');
+
 export function imageHref(floor: Floor, opts: ExportOptions): string {
   if (opts.image === 'embed' && floor.background.dataUri) return floor.background.dataUri;
-  return `/local/${opts.localDir}/${opts.imageBaseName}.png`;
+  return `/local/${opts.localDir}/${opts.imageBaseName}.png${bust(opts)}`;
 }
 
 /**
@@ -39,7 +43,7 @@ export function imageHref(floor: Floor, opts: ExportOptions): string {
  * beside it as a sidecar file; either way the SVG itself must be served by HA.
  */
 export function cardSvgHref(opts: ExportOptions): string {
-  return `/local/${opts.localDir}/${opts.imageBaseName}.svg`;
+  return `/local/${opts.localDir}/${opts.imageBaseName}.svg${bust(opts)}`;
 }
 
 /**

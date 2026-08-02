@@ -18,8 +18,15 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const baseName = slug(floor.name || project.name);
   const opts: ExportOptions = useMemo(
-    () => ({ image: imageMode, imageBaseName: baseName, localDir: 'floorplan' }),
-    [imageMode, baseName],
+    () => ({
+      image: imageMode,
+      imageBaseName: baseName,
+      localDir: 'floorplan',
+      // tie cache-bust to the content version so /local URLs change only when the
+      // floorplan actually changes (HA caches /local for 31 days).
+      cacheBust: String(project.updatedAt),
+    }),
+    [imageMode, baseName, project.updatedAt],
   );
 
   const ha = useMemo(() => buildHaFloorplan(project, floor, opts), [project, floor, opts]);
