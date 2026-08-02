@@ -186,6 +186,7 @@ JSON is the complete project (floors, background data URIs, markers, rooms, wall
 
 - [`USER_GUIDE.md`](USER_GUIDE.md) — connecting HA, designing a floorplan, and adding the
   export to a dashboard (both ha-floorplan and picture-elements paths).
+- [`CHANGELOG.md`](CHANGELOG.md) — release history.
 
 ## Author
 
