@@ -1,0 +1,19 @@
+name: HACS Validate
+
+# Runs the same validation HACS uses to gate default-store inclusion.
+# Must be green before opening the hacs/default PR.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: plugin
