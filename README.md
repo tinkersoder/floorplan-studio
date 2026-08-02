@@ -12,6 +12,28 @@ either for the HACS **ha-floorplan** card or the native **Picture Elements** car
 
 ---
 
+## Demo
+
+![Floorplan Studio exported to a live Home Assistant dashboard](docs/demo.jpg)
+
+*A floorplan designed in Floorplan Studio and exported as a `ha-floorplan` card — live
+entity icons (lights, media, cameras, locks), on/off state colouring, and power / label
+readouts overlaid on a 3D render of the home.*
+
+### Watch it in action
+
+<!--
+  To add the video:
+  1. Open any issue or PR comment on GitHub, drag your screen-recording (.mp4/.mov/.webm) in.
+  2. GitHub uploads it and inserts a URL like:
+       https://github.com/tinkersoder/floorplan-studio/assets/<id>/<file>.mp4
+  3. Paste that URL on its own line below (GitHub renders an inline player). Then delete this comment.
+-->
+
+> 🎥 _Video coming soon — drop the recording URL here (see the comment above)._
+
+---
+
 ## Features
 
 - **Canvas** — upload / paste / drag-drop a background; adjust opacity, scale, position,
