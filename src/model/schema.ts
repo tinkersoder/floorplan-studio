@@ -2,7 +2,7 @@
 //
 // Coordinate model (the linchpin): every geometry value below is stored in
 // DOCUMENT coordinates = the floor's canvas pixel space (default 1361x768 to
-// match the Herbwood base render). Zoom/pan is a pure viewport transform and
+// match a typical base render). Zoom/pan is a pure viewport transform and
 // never mutates these numbers, so what you design maps 1:1 to the SVG export.
 
 export type Point = { x: number; y: number };

@@ -49,7 +49,7 @@ export function cardSvgHref(opts: ExportOptions): string {
 /**
  * Build the ha-floorplan SVG: background <image>, room <path>s, and one
  * <g id="element" class="zone[ sensor]"> per marker (circle + __label text),
- * matching the structure ha-floorplan expects (see herbwood_floorplan.svg).
+ * matching the structure ha-floorplan expects.
  */
 export function buildFloorplanSvg(_project: Project, floor: Floor, opts: ExportOptions): string {
   const W = floor.canvas.width;

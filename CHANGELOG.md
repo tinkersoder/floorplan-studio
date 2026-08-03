@@ -7,14 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-<!--
-  Add entries here as you work; move them under a new version heading when you tag
-  a release. Keep the subheadings you use (drop the empty ones):
-    ### Added      — new features
-    ### Changed    — changes to existing behaviour
-    ### Fixed      — bug fixes
-    ### Removed    — removed features
--->
+### Changed
+
+- Genericized the built-in demo entity set (generic ids like `light.bedroom`,
+  `light.living_room`, `sensor.indoor_temperature`) so no real installation's
+  entity naming ships with the app.
 
 ## [0.1.0] - 2026-08-02
 

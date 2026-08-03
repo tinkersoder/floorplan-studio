@@ -1,14 +1,14 @@
 import { HaArea, HaEntity, HaState } from './entities';
 
-// Demo / mock entity set, seeded with the user's real "Herbwood" entities so the
-// app is immediately useful offline (and the exported card drops straight into
-// their dashboard). These are also used as a fallback state source in PREVIEW
-// mode when no live HA connection is active.
+// Demo / mock entity set: a small, generic sample home so the app is immediately
+// useful offline. Also used as the fallback state source in PREVIEW mode when no
+// live HA connection is active. (Deliberately generic entity ids — not tied to
+// any real installation.)
 
 export const DEMO_AREAS: HaArea[] = [
   { area_id: 'bedroom', name: 'Bedroom' },
   { area_id: 'office', name: 'Office' },
-  { area_id: 'toilet', name: 'Toilet' },
+  { area_id: 'bathroom', name: 'Bathroom' },
   { area_id: 'kitchen', name: 'Kitchen' },
   { area_id: 'living', name: 'Living room' },
   { area_id: 'dining', name: 'Dining' },
@@ -25,23 +25,23 @@ interface Seed {
 }
 
 const SEEDS: Seed[] = [
-  { entity_id: 'light.kutuvalo', name: 'Bedroom light', area: 'bedroom', state: 'on' },
-  { entity_id: 'light.geeklight', name: 'Office light', area: 'office', state: 'off' },
-  { entity_id: 'light.toilet_wled', name: 'Toilet WLED', area: 'toilet', state: 'off' },
+  { entity_id: 'light.bedroom', name: 'Bedroom light', area: 'bedroom', state: 'on' },
+  { entity_id: 'light.office', name: 'Office light', area: 'office', state: 'off' },
+  { entity_id: 'light.bathroom', name: 'Bathroom light', area: 'bathroom', state: 'off' },
   { entity_id: 'light.kitchen', name: 'Kitchen light', area: 'kitchen', state: 'on' },
-  { entity_id: 'light.table_lights', name: 'Dining table lights', area: 'dining', state: 'off' },
-  { entity_id: 'light.eteinen_wled', name: 'Hall WLED', area: 'hall', state: 'on' },
-  { entity_id: 'light.matrix', name: 'Living matrix', area: 'living', state: 'on' },
-  { entity_id: 'light.hypeled', name: 'Living hype LED', area: 'living', state: 'off' },
+  { entity_id: 'light.dining_table', name: 'Dining table lights', area: 'dining', state: 'off' },
+  { entity_id: 'light.hallway', name: 'Hallway light', area: 'hall', state: 'on' },
+  { entity_id: 'light.living_room', name: 'Living room light', area: 'living', state: 'on' },
+  { entity_id: 'light.living_room_strip', name: 'Living room strip', area: 'living', state: 'off' },
   {
-    entity_id: 'cover.livingroom_blinds_curtain',
+    entity_id: 'cover.living_room_blinds',
     name: 'Living room blinds',
     area: 'living',
     state: 'open',
     attrs: { current_position: 100 },
   },
   {
-    entity_id: 'sensor.humidity_and_temp_sensor_temperature',
+    entity_id: 'sensor.indoor_temperature',
     name: 'Indoor temperature',
     area: 'hall',
     icon: 'thermometer',
@@ -49,7 +49,7 @@ const SEEDS: Seed[] = [
     attrs: { unit_of_measurement: '°C', device_class: 'temperature' },
   },
   {
-    entity_id: 'sensor.humidity_and_temp_sensor_humidity',
+    entity_id: 'sensor.indoor_humidity',
     name: 'Indoor humidity',
     area: 'hall',
     icon: 'water-percent',
@@ -57,8 +57,8 @@ const SEEDS: Seed[] = [
     attrs: { unit_of_measurement: '%', device_class: 'humidity' },
   },
   {
-    entity_id: 'binary_sensor.living_motion',
-    name: 'Living motion',
+    entity_id: 'binary_sensor.living_room_motion',
+    name: 'Living room motion',
     area: 'living',
     state: 'off',
     attrs: { device_class: 'motion' },

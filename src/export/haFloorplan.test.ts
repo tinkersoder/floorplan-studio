@@ -4,28 +4,27 @@ import { buildHaFloorplan } from './haFloorplan';
 import { activeFloor } from '../state/store';
 import { ExportOptions } from './svg';
 
-// Golden test: a project modelled on the user's real Herbwood layout must
-// produce ha-floorplan SVG + YAML matching the structure that drops straight
-// into a dashboard (see herbwood_floorplan.svg / herbwood_floorplan_card.yaml).
+// Golden test: a sample project must produce ha-floorplan SVG + YAML matching
+// the structure that drops straight into a dashboard.
 
-const opts: ExportOptions = { image: 'reference', imageBaseName: 'herbwood', localDir: 'floorplan' };
+const opts: ExportOptions = { image: 'reference', imageBaseName: 'demo', localDir: 'floorplan' };
 
-function herbwoodProject() {
-  const p = createProject('Herbwood');
+function demoProject() {
+  const p = createProject('Demo home');
   const floor = activeFloor(p);
   floor.canvas = { width: 1361, height: 768 };
 
-  const bedroom = createMarker(240, 175, 'light.kutuvalo');
+  const bedroom = createMarker(240, 175, 'light.bedroom');
   bedroom.style.label = 'Bedroom';
   bedroom.stateRules = [{ id: 'r1', mode: 'boolean', onColor: '#ffc107', offColor: '#6b7280' }];
 
-  const living = createMarker(760, 425, 'light.matrix');
-  living.entities = ['light.matrix', 'light.hypeled'];
+  const living = createMarker(760, 425, 'light.living_room');
+  living.entities = ['light.living_room', 'light.living_room_strip'];
   living.elementId = 'living_lights';
   living.style.label = 'Living';
   living.stateRules = [{ id: 'r2', mode: 'boolean', onColor: '#ffc107', offColor: '#6b7280' }];
 
-  const temp = createMarker(620, 320, 'sensor.humidity_and_temp_sensor_temperature');
+  const temp = createMarker(620, 320, 'sensor.indoor_temperature');
   temp.style.label = 'temp';
   temp.style.showState = true;
   temp.actions.tap = { kind: 'more-info' };
@@ -35,36 +34,36 @@ function herbwoodProject() {
 }
 
 describe('buildHaFloorplan', () => {
-  const { p, floor } = herbwoodProject();
+  const { p, floor } = demoProject();
   const { svg, yaml } = buildHaFloorplan(p, floor, opts);
 
   it('emits an SVG with correct viewBox and referenced image', () => {
     expect(svg).toContain('viewBox="0 0 1361 768"');
-    expect(svg).toContain('/local/floorplan/herbwood.png');
+    expect(svg).toContain('/local/floorplan/demo.png');
     expect(svg).toContain('<g id="overlay">');
   });
 
   it('emits one named group per marker with a __label text node', () => {
     // group carries a per-marker --mc colour var after the class attribute
-    expect(svg).toContain('<g id="light.kutuvalo" class="zone" style="--mc:');
-    expect(svg).toContain('id="light.kutuvalo__label"');
+    expect(svg).toContain('<g id="light.bedroom" class="zone" style="--mc:');
+    expect(svg).toContain('id="light.bedroom__label"');
     // grouped lights use the synthetic element id
     expect(svg).toContain('<g id="living_lights" class="zone" style="--mc:');
     // sensor gets the sensor class
-    expect(svg).toContain('<g id="sensor.humidity_and_temp_sensor_temperature" class="zone sensor" style="--mc:');
+    expect(svg).toContain('<g id="sensor.indoor_temperature" class="zone sensor" style="--mc:');
   });
 
   it('emits the ha-floorplan card with class_set + text_set rules', () => {
     expect(yaml).toContain('type: custom:floorplan-card');
     // the CARD image points at the SVG (ha-floorplan loads & binds to it)…
-    expect(yaml).toContain('image: /local/floorplan/herbwood.svg');
+    expect(yaml).toContain('image: /local/floorplan/demo.svg');
     // …while the SVG itself references the background PNG internally
-    expect(svg).toContain('/local/floorplan/herbwood.png');
+    expect(svg).toContain('/local/floorplan/demo.png');
     expect(yaml).toContain('service: floorplan.class_set');
     expect(yaml).toContain('service: floorplan.text_set');
     // grouped-light rule binds two entities to the living_lights element
     expect(yaml).toContain('element: living_lights');
-    expect(yaml).toMatch(/light\.matrix[\s\S]*light\.hypeled/);
+    expect(yaml).toMatch(/light\.living_room[\s\S]*light\.living_room_strip/);
   });
 
   it('uses ${...} interpolation, not return statements (ha-floorplan syntax)', () => {
@@ -80,7 +79,7 @@ describe('buildHaFloorplan', () => {
   });
 
   it('gives the sensor a more-info tap action and a value label', () => {
-    expect(yaml).toContain('sensor.humidity_and_temp_sensor_temperature__label');
+    expect(yaml).toContain('sensor.indoor_temperature__label');
     expect(yaml).toContain('unit_of_measurement');
   });
 });
