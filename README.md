@@ -15,11 +15,17 @@ either for the HACS **ha-floorplan** card or the native **Picture Elements** car
 
 ## Demo
 
-![Floorplan Studio — a design exported to a live Home Assistant dashboard](docs/hero.jpg)
+![Floorplan Studio editor walkthrough](docs/demo.gif)
 
-*A floorplan designed in Floorplan Studio and exported as a `ha-floorplan` card — live
-entity icons (lights, media, cameras, locks), on/off state colouring, and power / label
-readouts overlaid on a 3D render of the home.*
+*Load a floor plan, drop and style entity markers, preview live states, and export a
+dashboard-ready card — all in the browser.*
+
+And here's an exported card running on a live Home Assistant dashboard:
+
+![A Floorplan Studio design exported to a live Home Assistant dashboard](docs/hero.jpg)
+
+*Live entity icons (lights, media, cameras, locks), on/off state colouring, and
+power / label readouts overlaid on a 3D render of the home.*
 
 ---
 
