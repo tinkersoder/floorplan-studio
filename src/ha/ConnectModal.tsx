@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../state/store';
 import { Modal } from '../ui/Modal';
 import { haClient, readCredentials, saveCredentials, clearCredentials } from './client';
+import { getHass, hassAvailable, hassToSource } from './hassBridge';
 
 export function ConnectModal({ onClose }: { onClose: () => void }) {
   const saved = readCredentials();
@@ -10,6 +11,15 @@ export function ConnectModal({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const conn = useStore((s) => s.conn);
+  const inCard = hassAvailable();
+
+  function useThisDashboard() {
+    const h = getHass();
+    if (!h) return;
+    const { entities, states } = hassToSource(h);
+    useStore.getState().useHassSource(entities, states);
+    setMsg({ kind: 'ok', text: `Live — ${entities.length} entities from this dashboard.` });
+  }
 
   async function testAndConnect() {
     setBusy(true);
@@ -48,6 +58,18 @@ export function ConnectModal({ onClose }: { onClose: () => void }) {
         pulls your real entity list and live states for preview. Your token stays in this
         browser and is only ever sent to your own HA instance.
       </p>
+
+      {inCard && (
+        <div className="fp-card-connect">
+          <button className="fp-primary" onClick={useThisDashboard}>
+            Use this dashboard's Home Assistant
+          </button>
+          <p className="fp-note">
+            Running as a dashboard card — go live off this HA instantly, no URL or token
+            needed. (Or connect a different HA below.)
+          </p>
+        </div>
+      )}
 
       <label className="fp-field">
         <span className="fp-field-label">Home Assistant URL</span>

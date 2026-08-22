@@ -65,6 +65,8 @@ interface StoreState {
   ) => void;
   patchState: (s: HaState) => void;
   useDemoSource: () => void;
+  /** Go live from HA's injected `hass` object (HACS card mode; no token). */
+  useHassSource: (entities: HaEntity[], states: Record<string, HaState>) => void;
   setConn: (c: Partial<StoreState['conn']>) => void;
 }
 
@@ -173,6 +175,14 @@ export const useStore = create<StoreState>((set, get) => ({
       states: demoStates(),
       usingDemo: true,
       conn: { status: 'disconnected', url: '' },
+    }),
+
+  useHassSource: (entities, states) =>
+    set({
+      entities,
+      states,
+      usingDemo: false,
+      conn: { status: 'connected', url: 'this dashboard' },
     }),
 
   setConn: (c) => set((st) => ({ conn: { ...st.conn, ...c } })),

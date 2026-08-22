@@ -172,6 +172,9 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
 .fp-modal-body { padding: 18px; overflow-y: auto; }
 .fp-modal-intro, .fp-modal-actions { margin-bottom: 14px; }
 .fp-modal-intro { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.fp-card-connect { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border, #2a2f3a); }
+.fp-card-connect .fp-primary { width: 100%; }
+.fp-card-connect .fp-note { margin-top: 8px; }
 .fp-modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .fp-note { background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 8px 10px; border-radius: 6px; font-size: 12px; margin: 8px 0; line-height: 1.5; }
 .fp-note.ok { border-left-color: #22c55e; }

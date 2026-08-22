@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dashboard-card live mode**: when installed as a HACS card, Floorplan Studio
+  now consumes the `hass` object Home Assistant injects into every Lovelace card.
+  A "Use this dashboard's Home Assistant" button in Connect goes live off the
+  current instance instantly — no URL and no long-lived token — and live states
+  keep refreshing on every HA push. The URL + token path still works for the
+  standalone build or for pointing at a different HA.
+
+### Fixed
+
+- Switching from demo to live states failed inside the HACS dashboard card
+  because the only live path was a self-made WebSocket (URL + token). Card mode
+  now uses HA's own connection.
+
 ### Changed
 
 - Genericized the built-in demo entity set (generic ids like `light.bedroom`,

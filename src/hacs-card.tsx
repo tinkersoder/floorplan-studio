@@ -7,6 +7,7 @@
 import { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import App from './App';
+import { setHass, HassLike } from './ha/hassBridge';
 // `?inline` gives the CSS as a string instead of injecting it into document
 // <head> — we put it in the shadow root instead.
 import cssText from './styles.css?inline';
@@ -24,6 +25,13 @@ class FloorplanStudioCard extends HTMLElement {
   // maps to the CSS var above.
   setConfig(config?: { height?: string }): void {
     if (config?.height) this.style.setProperty('--floorplan-studio-height', config.height);
+  }
+
+  // Lovelace assigns `card.hass = hass` on first render and on every state
+  // change. Forward it to the bridge so the app can go live off this dashboard's
+  // own Home Assistant — no URL, no long-lived token.
+  set hass(h: HassLike | null) {
+    setHass(h);
   }
 
   connectedCallback(): void {
@@ -48,6 +56,7 @@ class FloorplanStudioCard extends HTMLElement {
     this.root?.unmount();
     this.root = undefined;
     this.mounted = false;
+    setHass(null);
   }
 
   // Rough masonry sizing hint (× 50px). The editor is tall.

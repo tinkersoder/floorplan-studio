@@ -12,6 +12,7 @@ import { ConnectModal } from './ha/ConnectModal';
 import { ProjectsModal } from './persist/ProjectsModal';
 import { ExportModal } from './export/ExportModal';
 import { useAutosave } from './persist/useAutosave';
+import { subscribeHass, hassToSource } from './ha/hassBridge';
 
 type ModalId = null | 'help' | 'connect' | 'projects' | 'export';
 
@@ -20,6 +21,18 @@ export default function App() {
   const mode = useStore((s) => s.mode);
   useKeyboard();
   useAutosave();
+
+  // In HACS card mode HA pushes a fresh `hass` object on every state change.
+  // Once the user has chosen this dashboard as the live source (usingDemo:false,
+  // no WebSocket client), keep the store's states in sync with each push.
+  useEffect(() => {
+    return subscribeHass((h) => {
+      const st = useStore.getState();
+      if (st.usingDemo || st.conn.url !== 'this dashboard') return;
+      const { entities, states } = hassToSource(h);
+      st.useHassSource(entities, states);
+    });
+  }, []);
 
   // Paste-from-clipboard and drag-drop background image onto the app.
   useEffect(() => {
