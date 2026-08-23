@@ -83,3 +83,34 @@ describe('buildHaFloorplan', () => {
     expect(yaml).toContain('unit_of_measurement');
   });
 });
+
+describe('buildHaFloorplan inline SVG delivery', () => {
+  const { p, floor } = demoProject();
+  // give the floor a background so inline mode has something to embed
+  floor.background.dataUri = 'data:image/png;base64,iVBORw0KGgo=';
+  const inlineOpts: ExportOptions = { ...opts, svgDelivery: 'inline' };
+  const { yaml } = buildHaFloorplan(p, floor, inlineOpts);
+
+  it('embeds the whole SVG as a data URI in config.image (no external file)', () => {
+    expect(yaml).toContain('location: data:image/svg+xml;filename=demo.svg;base64,');
+    // cache:true so ha-floorplan does not append ?_=<ts> and corrupt the URI
+    expect(yaml).toContain('cache: true');
+    // the card must NOT point at an external /local svg in inline mode
+    expect(yaml).not.toContain('image: /local/floorplan/demo.svg');
+  });
+
+  it('forces the background to embed so nothing external is referenced', () => {
+    const b64 = yaml.match(/base64,([A-Za-z0-9+/=]+)/)![1];
+    const decoded = decodeURIComponent(escape(atob(b64)));
+    // decoded SVG inlines the background image, never a /local png path
+    expect(decoded).toContain('data:image/png;base64,');
+    expect(decoded).not.toContain('/local/floorplan/demo.png');
+    expect(decoded).toContain('<g id="overlay">');
+  });
+
+  it('still binds rules to element ids (self-contained but functional)', () => {
+    expect(yaml).toContain('type: custom:floorplan-card');
+    expect(yaml).toContain('element: living_lights');
+    expect(yaml).toContain('service: floorplan.class_set');
+  });
+});

@@ -9,6 +9,14 @@ export interface ExportOptions {
   localDir: string; // e.g. "floorplan" -> /local/floorplan/...
   /** cache-busting token appended to /local URLs (HA caches /local for 31 days) */
   cacheBust?: string;
+  /**
+   * How the ha-floorplan CARD gets the SVG:
+   *  - 'file'  (default) config.image points at /local/floorplan/x.svg — you copy
+   *            the .svg into /config/www.
+   *  - 'inline' config.image is a data: URI of the whole SVG — nothing to copy,
+   *            fully self-contained card. Implies the background is embedded too.
+   */
+  svgDelivery?: 'file' | 'inline';
 }
 
 export const esc = (s: string) =>
@@ -44,6 +52,23 @@ export function imageHref(floor: Floor, opts: ExportOptions): string {
  */
 export function cardSvgHref(opts: ExportOptions): string {
   return `/local/${opts.localDir}/${opts.imageBaseName}.svg${bust(opts)}`;
+}
+
+/**
+ * A data: URI carrying the whole SVG, for config.image when svgDelivery==='inline'
+ * (no file to copy). Two deliberate details make ha-floorplan inject it inline
+ * (so its element ids bind) instead of rendering a flat bitmap:
+ *  - the `;filename=<base>.svg` parameter puts ".svg" in the URL string, which is
+ *    how ha-floorplan detects an SVG (`imageUrl.includes('.svg')`);
+ *  - paired with `image.cache: true` in the card so ha-floorplan doesn't append a
+ *    `?_=<ts>` cache-buster that would corrupt the data URI.
+ */
+export function svgDataUri(svg: string, opts: ExportOptions): string {
+  const name = (opts.imageBaseName || 'floorplan').replace(/[^a-z0-9._-]/gi, '_');
+  // unescape(encodeURIComponent(...)) makes the string latin1-safe for btoa so
+  // non-ASCII in labels doesn't throw. btoa is global in browsers and Node 16+.
+  const b64 = btoa(unescape(encodeURIComponent(svg)));
+  return `data:image/svg+xml;filename=${name}.svg;base64,${b64}`;
 }
 
 /**

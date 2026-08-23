@@ -14,19 +14,25 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const floor = activeFloor(project);
   const [target, setTarget] = useState<Target>('ha-floorplan');
   const [imageMode, setImageMode] = useState<'embed' | 'reference'>('embed');
+  // ha-floorplan only: how the card gets the SVG. 'inline' = data URI in the
+  // card (nothing to copy); 'file' = /local/floorplan/x.svg you drop in www.
+  const [delivery, setDelivery] = useState<'inline' | 'file'>('inline');
   const [copied, setCopied] = useState(false);
 
+  const inline = target === 'ha-floorplan' && delivery === 'inline';
   const baseName = slug(floor.name || project.name);
   const opts: ExportOptions = useMemo(
     () => ({
-      image: imageMode,
+      // inline delivery is fully self-contained, so it forces embedded background.
+      image: inline ? 'embed' : imageMode,
       imageBaseName: baseName,
       localDir: 'floorplan',
+      svgDelivery: delivery,
       // tie cache-bust to the content version so /local URLs change only when the
       // floorplan actually changes (HA caches /local for 31 days).
       cacheBust: String(project.updatedAt),
     }),
-    [imageMode, baseName, project.updatedAt],
+    [imageMode, baseName, project.updatedAt, delivery, inline],
   );
 
   const ha = useMemo(() => buildHaFloorplan(project, floor, opts), [project, floor, opts]);
@@ -82,19 +88,40 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             <span><strong>Raw SVG</strong> — the floorplan SVG only.</span>
           </label>
 
+          {target === 'ha-floorplan' && (
+            <>
+              <div className="fp-divider" />
+              <div className="fp-subtitle">SVG delivery</div>
+              <label className="fp-radio">
+                <input type="radio" checked={delivery === 'inline'} onChange={() => setDelivery('inline')} />
+                <span><strong>Inline in card</strong> (data URI) — <em>no files to copy</em>, paste &amp; go. Default.</span>
+              </label>
+              <label className="fp-radio">
+                <input type="radio" checked={delivery === 'file'} onChange={() => setDelivery('file')} />
+                <span><strong>Separate .svg file</strong> — card points at <code>/local/floorplan/{baseName}.svg</code> (copy it into www).</span>
+              </label>
+            </>
+          )}
+
           <div className="fp-divider" />
           <div className="fp-subtitle">Background image</div>
-          <label className="fp-radio">
-            <input type="radio" checked={imageMode === 'embed'} onChange={() => setImageMode('embed')} />
-            <span><strong>Embed</strong> (data URI) — self-contained, zero-friction. Default.</span>
-          </label>
-          <label className="fp-radio">
-            <input type="radio" checked={imageMode === 'reference'} onChange={() => setImageMode('reference')} />
-            <span><strong>Reference</strong> — emits <code>/local/floorplan/{baseName}.png</code> + the image file.</span>
-          </label>
+          {inline ? (
+            <div className="fp-note">Inline delivery embeds the background inside the SVG automatically — nothing to configure.</div>
+          ) : (
+            <>
+              <label className="fp-radio">
+                <input type="radio" checked={imageMode === 'embed'} onChange={() => setImageMode('embed')} />
+                <span><strong>Embed</strong> (data URI) — self-contained, zero-friction. Default.</span>
+              </label>
+              <label className="fp-radio">
+                <input type="radio" checked={imageMode === 'reference'} onChange={() => setImageMode('reference')} />
+                <span><strong>Reference</strong> — emits <code>/local/floorplan/{baseName}.png</code> + the image file.</span>
+              </label>
+            </>
+          )}
           <div className="fp-divider" />
           <div className="fp-subtitle">What to do</div>
-          <Steps target={target} imageMode={imageMode} baseName={baseName} />
+          <Steps target={target} imageMode={imageMode} baseName={baseName} inline={inline} />
 
           <div className="fp-divider" />
           <div className="fp-modal-actions">
@@ -117,10 +144,12 @@ function Steps({
   target,
   imageMode,
   baseName,
+  inline,
 }: {
   target: Target;
   imageMode: 'embed' | 'reference';
   baseName: string;
+  inline: boolean;
 }) {
   const dir = <code>/config/www/floorplan/</code>;
   if (target === 'picture-elements') {
@@ -143,6 +172,18 @@ function Steps({
     return <div className="fp-note">Raw floorplan SVG only — use “Download files”.</div>;
   }
   // ha-floorplan
+  if (inline) {
+    return (
+      <div className="fp-note">
+        <strong>Needs the ha-floorplan HACS card. No files to copy.</strong>
+        <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+          <li><strong>Copy YAML</strong> (the whole floorplan is inside it).</li>
+          <li>Dashboard → <em>Edit → Add card → Manual</em> → paste → Save.</li>
+        </ol>
+        <div style={{ marginTop: 4 }}>The SVG rides along as a data URI in <code>config.image</code>.</div>
+      </div>
+    );
+  }
   return (
     <div className="fp-note">
       <strong>Needs the ha-floorplan HACS card.</strong>

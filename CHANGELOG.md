@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Inline SVG delivery for ha-floorplan (no file copy)**: the export can now
+  embed the whole floorplan SVG straight into the card as a `data:` URI
+  (`config.image: { location: data:image/svg+xml…, cache: true }`), so there are
+  **no files to copy into `/config/www`** — paste the card YAML and it works.
+  A `;filename=…svg` marker keeps ha-floorplan injecting it inline (element
+  bindings intact) and `cache: true` stops its cache-buster from corrupting the
+  URI. Default for ha-floorplan; the separate-`.svg`-file mode is still available.
 - **Dashboard-card live mode**: when installed as a HACS card, Floorplan Studio
   now consumes the `hass` object Home Assistant injects into every Lovelace card.
   A "Use this dashboard's Home Assistant" button in Connect goes live off the
