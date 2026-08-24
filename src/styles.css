@@ -1,4 +1,10 @@
-:root {
+/* :root targets <html> in the standalone build. Inside the HACS card the app
+ * lives in a shadow root, which a shadow-scoped stylesheet's :root can't reach —
+ * so :host carries the same vars there (matches nothing in standalone, harmless).
+ * Without this, every var(--text)/var(--bg) is undefined in the card and text
+ * falls back to HA's inherited colour on our dark panels = invisible. */
+:root,
+:host {
   --bg: #0b0f17;
   --panel: #131926;
   --panel-2: #1b2334;
@@ -11,6 +17,14 @@
   --radius: 8px;
   --header: 52px;
   color-scheme: dark;
+}
+
+/* In the card there is no <body>, so the body rule below never applies — anchor
+ * the base text colour on the shadow host / app root instead. */
+:host,
+.fps-root,
+.fp-app {
+  color: var(--text);
 }
 
 * { box-sizing: border-box; }
