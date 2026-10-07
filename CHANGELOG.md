@@ -23,11 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keep refreshing on every HA push. The URL + token path still works for the
   standalone build or for pointing at a different HA.
 
+### Changed
+
+- Dropped the generic `light.bedroom` entry from the built-in demo entity set.
+
 ### Fixed
 
 - Switching from demo to live states failed inside the HACS dashboard card
   because the only live path was a self-made WebSocket (URL + token). Card mode
   now uses HA's own connection.
+- **Dashboard card started in demo mode by default.** The HACS card now
+  auto-adopts the dashboard's own `hass` object the first time it's available,
+  so it comes up connected to your live Home Assistant instead of requiring a
+  manual "Use this dashboard's Home Assistant" click. Disconnecting back to
+  demo (or connecting to a different HA) afterwards is unaffected — the
+  auto-adopt only ever fires once, on first load.
 
 ### Changed
 

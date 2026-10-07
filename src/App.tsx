@@ -12,7 +12,7 @@ import { ConnectModal } from './ha/ConnectModal';
 import { ProjectsModal } from './persist/ProjectsModal';
 import { ExportModal } from './export/ExportModal';
 import { useAutosave } from './persist/useAutosave';
-import { subscribeHass, hassToSource } from './ha/hassBridge';
+import { subscribeHass, hassToSource, getHass, HassLike } from './ha/hassBridge';
 
 type ModalId = null | 'help' | 'connect' | 'projects' | 'export';
 
@@ -23,15 +23,30 @@ export default function App() {
   useAutosave();
 
   // In HACS card mode HA pushes a fresh `hass` object on every state change.
-  // Once the user has chosen this dashboard as the live source (usingDemo:false,
-  // no WebSocket client), keep the store's states in sync with each push.
+  // The card should come up connected to this dashboard's HA by default
+  // (not demo mode), so the first `hass` we see — whether it arrived before
+  // this effect subscribed or arrives as a later push — is auto-adopted as
+  // the live source. After that one-time adoption, keep states in sync with
+  // every push while the user stays on "this dashboard" as their source;
+  // if they explicitly disconnect back to demo or connect elsewhere, we
+  // don't override that choice again. Standalone (non-card) builds never
+  // get a `hass` object, so this is a no-op there and demo mode stands.
   useEffect(() => {
-    return subscribeHass((h) => {
+    let autoAdopted = false;
+    function adopt(h: HassLike) {
       const st = useStore.getState();
-      if (st.usingDemo || st.conn.url !== 'this dashboard') return;
       const { entities, states } = hassToSource(h);
+      if (!autoAdopted && st.usingDemo && st.conn.status === 'disconnected') {
+        autoAdopted = true;
+        st.useHassSource(entities, states);
+        return;
+      }
+      if (st.usingDemo || st.conn.url !== 'this dashboard') return;
       st.useHassSource(entities, states);
-    });
+    }
+    const existing = getHass();
+    if (existing) adopt(existing);
+    return subscribeHass(adopt);
   }, []);
 
   // Paste-from-clipboard and drag-drop background image onto the app.
