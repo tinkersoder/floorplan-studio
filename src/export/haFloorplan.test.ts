@@ -114,3 +114,27 @@ describe('buildHaFloorplan inline SVG delivery', () => {
     expect(yaml).toContain('service: floorplan.class_set');
   });
 });
+
+describe('buildHaFloorplan re-export after adding a marker', () => {
+  // Guards against "stale export" reports: each export must be a pure
+  // function of current floor state, so a freshly added marker shows up in
+  // both the rules list and the embedded data URI on the very next export.
+  // (If a dashboard still shows the old floorplan after pasting fresh YAML,
+  // this test proves the exporter isn't the source — check for a stale
+  // copy-paste or the browser/Lovelace not reloading the card.)
+  it('changes the YAML and the inline SVG data URI once a marker is added', () => {
+    const { p, floor } = demoProject();
+    const inlineOpts: ExportOptions = { ...opts, svgDelivery: 'inline' };
+    const before = buildHaFloorplan(p, floor, inlineOpts);
+
+    floor.markers.push(createMarker(900, 500, 'light.office'));
+    const after = buildHaFloorplan(p, floor, inlineOpts);
+
+    expect(after.yaml).not.toBe(before.yaml);
+    expect(after.yaml).toContain('light.office');
+
+    const beforeB64 = before.yaml.match(/base64,([A-Za-z0-9+/=]+)/)![1];
+    const afterB64 = after.yaml.match(/base64,([A-Za-z0-9+/=]+)/)![1];
+    expect(afterB64).not.toBe(beforeB64);
+  });
+});

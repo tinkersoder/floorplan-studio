@@ -25,7 +25,6 @@ interface Seed {
 }
 
 const SEEDS: Seed[] = [
-  { entity_id: 'light.bedroom', name: 'Bedroom light', area: 'bedroom', state: 'on' },
   { entity_id: 'light.office', name: 'Office light', area: 'office', state: 'off' },
   { entity_id: 'light.bathroom', name: 'Bathroom light', area: 'bathroom', state: 'off' },
   { entity_id: 'light.kitchen', name: 'Kitchen light', area: 'kitchen', state: 'on' },

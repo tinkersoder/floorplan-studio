@@ -29,7 +29,7 @@ export function EntityBrowser() {
   }, [entities, q, domain]);
 
   function addMarkerFor(entityId: string, icon?: string) {
-    const { project, commit, select } = useStore.getState();
+    const { project, commit, select, setTool } = useStore.getState();
     const fl = activeFloor(project);
     // Drop a new marker, offset slightly from any existing one at center so
     // multiple quick adds don't stack exactly. (Use the inspector's
@@ -52,6 +52,10 @@ export function EntityBrowser() {
       activeFloor(p).markers.push(m);
     });
     select(m.id);
+    // Adding a marker from the entity list is a one-off drop, not a request
+    // to switch into the canvas "Marker" placement tool — keep/return to
+    // Select so the new marker can be dragged/edited right away.
+    setTool('select');
   }
 
   function syncAllIcons() {
