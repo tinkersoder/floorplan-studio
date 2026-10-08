@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { activeFloor, useStore } from '../state/store';
 import { Modal } from '../ui/Modal';
 import { downloadBlob } from '../persist/ProjectsModal';
@@ -8,6 +8,12 @@ import { buildPictureElements } from './pictureElements';
 import { svgToPngBlob, dataUriToBlob } from './png';
 
 type Target = 'ha-floorplan' | 'picture-elements' | 'svg';
+type DeployStatus = 'checking' | 'missing' | 'stale' | 'match' | 'unknown';
+
+async function sha256(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const project = useStore((s) => s.project);
@@ -37,6 +43,37 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const ha = useMemo(() => buildHaFloorplan(project, floor, opts), [project, floor, opts]);
   const pe = useMemo(() => buildPictureElements(project, floor, opts), [project, floor, opts]);
+
+  // Separate-file delivery is a two-step manual deploy (export, then copy into
+  // www). Catch the "forgot step two" / "stale copy" case here instead of a
+  // silent blank card later — see floorplan-studio export notes.
+  const deployUrl = `/local/floorplan/${baseName}.svg`;
+  const [deployStatus, setDeployStatus] = useState<DeployStatus>('unknown');
+  useEffect(() => {
+    if (target !== 'ha-floorplan' || delivery !== 'file') {
+      setDeployStatus('unknown');
+      return;
+    }
+    let cancelled = false;
+    setDeployStatus('checking');
+    (async () => {
+      try {
+        const res = await fetch(deployUrl, { cache: 'no-store' });
+        if (!res.ok) {
+          if (!cancelled) setDeployStatus('missing');
+          return;
+        }
+        const live = await res.text();
+        const [liveHash, exportHash] = await Promise.all([sha256(live), sha256(ha.svg)]);
+        if (!cancelled) setDeployStatus(liveHash === exportHash ? 'match' : 'stale');
+      } catch {
+        if (!cancelled) setDeployStatus('missing');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [target, delivery, deployUrl, ha.svg]);
 
   const yamlText = target === 'picture-elements' ? pe.yaml : target === 'ha-floorplan' ? ha.yaml : ha.svg;
 
@@ -100,6 +137,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                 <input type="radio" checked={delivery === 'file'} onChange={() => setDelivery('file')} />
                 <span><strong>Separate .svg file</strong> — card points at <code>/local/floorplan/{baseName}.svg</code> (copy it into www).</span>
               </label>
+              {delivery === 'file' && <DeployBanner status={deployStatus} url={deployUrl} />}
             </>
           )}
 
@@ -199,6 +237,29 @@ function Steps({
       )}
     </div>
   );
+}
+
+function DeployBanner({ status, url }: { status: DeployStatus; url: string }) {
+  if (status === 'unknown' || status === 'checking') {
+    return <div className="fp-note">Checking live file at <code>{url}</code>…</div>;
+  }
+  if (status === 'missing') {
+    return (
+      <div className="fp-note err">
+        <strong>⚠ Not found at <code>{url}</code>.</strong> The dashboard card will render blank until you
+        download the files and copy the SVG into <code>/config/www/floorplan/</code>.
+      </div>
+    );
+  }
+  if (status === 'stale') {
+    return (
+      <div className="fp-note err">
+        <strong>⚠ Live file differs from this export.</strong> Download files again and copy the fresh{' '}
+        <code>{url}</code> over the old one, or the dashboard keeps showing the previous floorplan.
+      </div>
+    );
+  }
+  return <div className="fp-note ok">✓ Live file at <code>{url}</code> matches this export.</div>;
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'floorplan';
