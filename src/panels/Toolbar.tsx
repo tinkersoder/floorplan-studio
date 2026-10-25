@@ -9,10 +9,11 @@ const TOOLS: { id: ToolId; label: string; key: string }[] = [
   { id: 'window', label: 'Window', key: '' },
 ];
 
-export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenHelp }: {
+export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenRamses, onOpenHelp }: {
   onOpenExport: () => void;
   onOpenProjects: () => void;
   onOpenConnect: () => void;
+  onOpenRamses: () => void;
   onOpenHelp: () => void;
 }) {
   const tool = useStore((s) => s.tool);
@@ -79,6 +80,9 @@ export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenHel
       <div className="fp-toolbar-group">
         <button onClick={onOpenConnect} title="Connect to Home Assistant">
           {conn.status === 'connected' ? '🟢 HA' : usingDemo ? '◻ Demo' : '⚪ HA'}
+        </button>
+        <button onClick={onOpenRamses} disabled={mode === 'preview'} title="Import RAMSES RF / Ramses Extras devices as markers">
+          RAMSES
         </button>
         <button onClick={onOpenProjects}>Projects</button>
         <button className="fp-primary" onClick={onOpenExport}>Export</button>

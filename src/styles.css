@@ -228,3 +228,27 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
   .fp-export-grid { grid-template-columns: 1fr; }
   .fp-project-name { width: 110px; }
 }
+
+/* RAMSES import ----------------------------------------------------------- */
+.fp-rx-sources { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; margin-bottom: 8px; }
+.fp-rx-source { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.fp-rx-source .fp-primary { width: 100%; }
+.fp-rx-paste { width: 100%; min-height: 84px; resize: vertical; font-family: ui-monospace, monospace; font-size: 11px; box-sizing: border-box; }
+.fp-rx-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0 0; }
+.fp-rx-options { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 10px 0 4px; }
+.fp-rx-select { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.fp-rx-summary { margin-left: auto; }
+.fp-rx-table-wrap { max-height: 38vh; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+.fp-rx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.fp-rx-table th { position: sticky; top: 0; background: var(--panel-2); text-align: left; font-weight: 600; color: var(--muted); padding: 6px 8px; z-index: 1; }
+.fp-rx-table td { padding: 5px 8px; border-top: 1px solid var(--border); vertical-align: top; }
+.fp-rx-table tr.dim td { opacity: 0.55; }
+.fp-rx-name { font-weight: 600; }
+.fp-rx-sub { font-size: 10px; color: var(--muted); word-break: break-all; }
+.fp-rx-type { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.fp-rx-status { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; }
+.fp-rx-status.room { border-color: #22c55e; color: #22c55e; }
+.fp-rx-status.staging { border-color: #f59e0b; color: #f59e0b; }
+.fp-rx-footer { margin-top: 14px; margin-bottom: 0; }
+.fp-rx-merge { font-size: 13px; line-height: 1.6; padding-left: 18px; }
+@media (max-width: 720px) { .fp-rx-sources { grid-template-columns: 1fr; } .fp-rx-summary { margin-left: 0; width: 100%; } }

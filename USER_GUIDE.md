@@ -81,6 +81,38 @@ HA instance. Click **Disconnect** to wipe it and return to demo mode.
 - Toggle **Preview** in the top bar to see your rules driven by live states (or the demo
   set). Toggle back to **Edit** to keep working.
 
+### Import RAMSES RF / Ramses Extras devices
+
+For evohome / RAMSES-II systems run through [Ramses RF](https://github.com/ramses-rf/ramses_cc)
+(`ramses_cc`) and, optionally, [Ramses Extras](https://github.com/wimpie70/ramses_extras):
+
+1. Draw a room for every space and set its **HA area** in the Inspector (or give the room the same
+   name as the HA area). This is how devices find their room.
+2. Click **RAMSES** in the toolbar.
+3. **Read RAMSES devices** (needs the Home Assistant link — token or dashboard-card mode):
+   - with **Ramses Extras** installed it calls `ramses_extras/floorplan_helper/get_topology`, which
+     already resolves zones, parent links, display names and each device's primary entity;
+   - without Extras it rebuilds the same list from the HA device/entity/area/floor registries,
+     filtered to `ramses_cc`.
+4. Or **paste / load** offline data:
+   - a saved `get_topology` result (raw or wrapped in the WebSocket `result`),
+   - the response of the Extras service `ramses_extras.floorplan_seed_studio` (or any studio project
+     JSON) — its markers and missing rooms are **merged** into the current project, scaled to this
+     canvas,
+   - a ramses_cc `known_list`, a ramses_rf schema or even a packet log — every device id
+     (`04:123456`, zones `01:123456_02`) is matched to your HA entities.
+5. Review the table: tick devices (gateway is off by default), choose labels, extra entities
+   (temperature, heat demand, CO₂…), ready-made **state rules** (offline grey, battery-low blink,
+   window-open icon, heat-demand gradient) and marker size. Each row shows where the device goes:
+   *room*, *staging row* (bottom edge of the floor matching the area's HA floor, else the active
+   floor) or *already on plan*.
+6. **Add markers**. The whole import is one undo step, and running it again only adds devices that
+   aren't on the plan yet.
+
+Icons follow the device class: zone `home-thermometer`, TRV `radiator`, controller `thermostat`,
+FAN `fan`, remote `remote`, CO₂ `molecule-co2`, relay `pipe-valve`, gateway `router-wireless`…
+Heating devices are orange, ventilation blue.
+
 ### Saving
 - Everything **autosaves** to your browser. Use **Projects** to create/open/delete projects,
   **Export current as JSON** for a backup, or **Import JSON…** to restore one.

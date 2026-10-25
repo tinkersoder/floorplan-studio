@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **RAMSES RF / Ramses Extras import** (toolbar → **RAMSES**): adds evohome / RAMSES-II
+  devices as markers. Reads live from Ramses Extras'
+  `ramses_extras/floorplan_helper/get_topology` WebSocket command, falling back to the HA
+  device/entity registries filtered to `ramses_cc` when Extras isn't installed. Offline it accepts a
+  pasted/loaded topology, a `floorplan_seed_studio` response or studio project (merged into the
+  current project, rooms included, scaled to the canvas), or any text with device ids
+  (`known_list`, schema, packet log). Devices land in the room mapped to their HA area (room
+  `areaId` or name), otherwise in a staging row on the floor matching the area's HA floor; class
+  icons, group colours, optional extra entities and state rules (offline, battery low, window
+  open, heat demand). Idempotent and one undo step. Works in both token and dashboard-card mode.
 - **Inline SVG delivery for ha-floorplan (no file copy)**: the export can now
   embed the whole floorplan SVG straight into the card as a `data:` URI
   (`config.image: { location: data:image/svg+xml…, cache: true }`), so there are
