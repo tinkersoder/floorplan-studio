@@ -12,10 +12,11 @@ import { ConnectModal } from './ha/ConnectModal';
 import { ProjectsModal } from './persist/ProjectsModal';
 import { ExportModal } from './export/ExportModal';
 import { RamsesImportModal } from './ramses/RamsesImportModal';
+import { HaImportModal } from './haimport/HaImportModal';
 import { useAutosave } from './persist/useAutosave';
 import { subscribeHass, hassToSource, getHass, HassLike } from './ha/hassBridge';
 
-type ModalId = null | 'help' | 'connect' | 'projects' | 'export' | 'ramses';
+type ModalId = null | 'help' | 'connect' | 'projects' | 'export' | 'ramses' | 'haimport';
 
 export default function App() {
   const [modal, setModal] = useState<ModalId>(null);
@@ -99,6 +100,7 @@ export default function App() {
         onOpenProjects={() => setModal('projects')}
         onOpenConnect={() => setModal('connect')}
         onOpenRamses={() => setModal('ramses')}
+        onOpenHaImport={() => setModal('haimport')}
         onOpenHelp={() => setModal('help')}
       />
       <div className="fp-body">
@@ -124,6 +126,7 @@ export default function App() {
       {modal === 'projects' && <ProjectsModal onClose={() => setModal(null)} />}
       {modal === 'export' && <ExportModal onClose={() => setModal(null)} />}
       {modal === 'ramses' && <RamsesImportModal onClose={() => setModal(null)} />}
+      {modal === 'haimport' && <HaImportModal onClose={() => setModal(null)} />}
     </div>
   );
 }

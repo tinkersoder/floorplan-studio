@@ -33,6 +33,16 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             and re-running only adds devices that aren't on the plan yet.</li>
         </ul>
 
+        <h3>2c · Import a card that's already in Home Assistant</h3>
+        <ul>
+          <li><strong>Import card</strong> → <em>Scan dashboards</em> lists every ha-floorplan and picture-elements card
+            (needs the HA link), or paste the card / dashboard YAML.</li>
+          <li>The SVG / image is downloaded from <code>/local/…</code> (inline data URIs work offline). If a download is
+            blocked, pick the file with <em>Add files…</em> — it's matched by name.</li>
+          <li>Rule-bound elements become markers at their real position, <code>area.*</code> / <code>room_*</code> shapes
+            become rooms, the rest of the drawing becomes the background.</li>
+        </ul>
+
         <h3>3 · Export → ha-floorplan (rooms + rich rules)</h3>
         <ol>
           <li>Install <strong>ha-floorplan</strong> via HACS → Frontend → “floorplan”, then restart HA.</li>

@@ -338,7 +338,10 @@ function RoomEditor({ room, floor }: { room: Room; floor: Floor }) {
         <Select
           value={room.areaId ?? ''}
           onChange={(v) => set((r) => void (r.areaId = v || undefined))}
-          options={[{ value: '', label: '— none —' }, ...areaIds.map((a) => ({ value: a, label: a }))]}
+          options={[
+            { value: '', label: '— none —' },
+            ...(room.areaId && !areaIds.includes(room.areaId) ? [room.areaId] : []).concat(areaIds).map((a) => ({ value: a, label: a })),
+          ]}
         />
       </Field>
       <div className="fp-row2">

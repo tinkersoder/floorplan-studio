@@ -252,3 +252,8 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
 .fp-rx-footer { margin-top: 14px; margin-bottom: 0; }
 .fp-rx-merge { font-size: 13px; line-height: 1.6; padding-left: 18px; }
 @media (max-width: 720px) { .fp-rx-sources { grid-template-columns: 1fr; } .fp-rx-summary { margin-left: 0; width: 100%; } }
+.fp-rx-cards { display: flex; flex-direction: column; gap: 4px; max-height: 30vh; overflow: auto; margin: 6px 0 10px; }
+.fp-rx-card { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 13px; }
+.fp-rx-card > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fp-rx-card.active { border-color: var(--accent); background: var(--panel-2); }
+.fp-rx-card input { margin-top: 3px; }

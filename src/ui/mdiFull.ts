@@ -29,3 +29,17 @@ export const helpCirclePath = ALL['mdiHelpCircle'];
 
 /** Does this mdi name exist? (for the icon picker's live validation) */
 export const mdiExists = (name: string): boolean => mdiPath(name) !== null;
+
+let byPath: Map<string, string> | null = null;
+/** Reverse lookup: SVG path data → mdi icon name (used when importing exported SVGs). */
+export function mdiNameForPath(d?: string | null): string | null {
+  if (!d) return null;
+  if (!byPath) {
+    byPath = new Map();
+    for (const [k, v] of Object.entries(ALL)) {
+      if (!k.startsWith('mdi') || typeof v !== 'string' || byPath.has(v)) continue;
+      byPath.set(v, k.slice(3).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase());
+    }
+  }
+  return byPath.get(d.trim()) ?? null;
+}
