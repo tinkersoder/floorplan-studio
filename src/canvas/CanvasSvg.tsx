@@ -86,10 +86,19 @@ export function CanvasSvg() {
     setDrawing(null);
   }
 
-  function onWheel(e: React.WheelEvent) {
-    e.preventDefault();
-    zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : 1 / 1.1);
-  }
+  // React attaches delegated `wheel` listeners as *passive*, so
+  // `preventDefault()` in a synthetic onWheel is ignored — the page scrolls
+  // while the canvas zooms. A native non-passive listener fixes both.
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : 1 / 1.1);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [zoomAt]);
 
   function onPointerDown(e: React.PointerEvent) {
     // Only fires when the background (not a marker/room) is hit, because those
@@ -198,7 +207,6 @@ export function CanvasSvg() {
     <svg
       ref={svgRef}
       className="fp-canvas"
-      onWheel={onWheel}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

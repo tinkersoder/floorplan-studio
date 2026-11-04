@@ -23,5 +23,5 @@ jobs:
       - run: npm run build:hacs
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist-hacs/floorplan-studio.js
+          files: dist/floorplan-studio.js
           generate_release_notes: true

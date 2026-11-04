@@ -9,7 +9,7 @@ export default defineConfig({
   define: { 'process.env.NODE_ENV': '"production"' },
   build: {
     target: 'es2020',
-    outDir: 'dist-hacs',
+    outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: false,
     lib: {

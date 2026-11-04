@@ -165,16 +165,16 @@ Open http://localhost:5178 in your browser. Same on all platforms.
 ## Build (static site)
 
 ```bash
-npm run build      # type-checks, then outputs a static bundle to dist/
+npm run build      # type-checks, then outputs a static bundle to dist-app/
 npm run preview    # serve the built bundle locally
 ```
 
-`dist/` is a fully static, path-relative site (`base: './'`). Host it anywhere:
+`dist-app/` is a fully static, path-relative site (`base: './'`). Host it anywhere:
 
 - **Any static host / CDN** — Netlify, Vercel, GitHub Pages, Cloudflare Pages: point it at
-  `dist/`.
-- **A plain web server** — `npx serve dist` or copy `dist/` behind nginx/Caddy.
-- **From Home Assistant itself** — copy `dist/` into `/config/www/floorplan-studio/` and
+  `dist-app/`.
+- **A plain web server** — `npx serve dist-app` or copy `dist-app/` behind nginx/Caddy.
+- **From Home Assistant itself** — copy `dist-app/` into `/config/www/floorplan-studio/` and
   open `http://<ha>:8123/local/floorplan-studio/index.html`. Serving it from the same
   origin as HA also sidesteps CORS entirely.
 

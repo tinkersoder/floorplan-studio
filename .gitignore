@@ -1,5 +1,5 @@
 node_modules
-dist
-dist-hacs
+# dist/ holds the committed HACS plugin bundle — do not ignore it.
+dist-app
 *.local
 .DS_Store

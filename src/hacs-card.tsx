@@ -2,7 +2,7 @@
 // element. The app is mounted inside a shadow root with its stylesheet injected
 // inline, so HA's CSS and the app's CSS can't collide in either direction.
 //
-// Built by vite.hacs.config.ts into a single dist-hacs/floorplan-studio.js that
+// Built by vite.hacs.config.ts into a single dist/floorplan-studio.js that
 // HACS serves as a Lovelace resource.
 import { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
