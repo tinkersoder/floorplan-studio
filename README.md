@@ -75,6 +75,14 @@ no HACS? The standalone build below still works.
   pulls the entity + area registries and subscribes to live states; "Test connection"
   button with clear CORS / mixed-content guidance. Token stays in your browser and is
   only ever sent to your own HA.
+- **Import existing cards** — scan your dashboards (or paste YAML) for ha-floorplan and
+  picture-elements cards and bring them back as an editable floor: bound SVG elements → markers at
+  their real positions, `area.*` / `room_*` shapes → rooms, the rest of the drawing → background.
+  Round-trips Studio's own exports and Ramses Extras' generated floorplans.
+- **RAMSES RF / Ramses Extras import** — pull evohome zones, TRVs, thermostats, ventilation units,
+  CO₂ sensors and remotes straight from HA (Ramses Extras' floorplan helper, or plain `ramses_cc`),
+  or paste a topology / `floorplan_seed_studio` result / `known_list`. Devices auto-place into the
+  room mapped to their HA area, with class icons and ready-made state rules.
 - **Persistence** — named projects in IndexedDB with autosave; JSON export/import for
   portable backups; undo/redo history.
 - **Export** — ha-floorplan (SVG + `custom:floorplan-card` YAML + stylesheet), Picture

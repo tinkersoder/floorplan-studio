@@ -26,6 +26,11 @@ export interface HassLike {
   // degrade gracefully to state attributes when they're missing.
   entities?: Record<string, { area_id?: string; name?: string; icon?: string }>;
   areas?: Record<string, { area_id: string; name: string }>;
+  /** Lovelace's WebSocket helper — used for registry / integration commands. */
+  callWS?: <T>(msg: Record<string, unknown>) => Promise<T>;
+  /** auth of the logged-in user (dashboard-card mode): base URL + token for /api fetches */
+  auth?: { data?: { hassUrl?: string; access_token?: string } };
+  connection?: { sendMessagePromise: <T>(msg: Record<string, unknown>) => Promise<T> };
   callService?: (
     domain: string,
     service: string,

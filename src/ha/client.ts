@@ -85,6 +85,12 @@ export class HaClient {
     });
   }
 
+  /** Raw WebSocket command (registries, integration-specific commands like Ramses Extras). */
+  async sendWS<T>(msg: Record<string, unknown>): Promise<T> {
+    if (!this.conn) throw new Error('Not connected');
+    return this.conn.sendMessagePromise<T>(msg as { type: string });
+  }
+
   /** Call a service on the connected instance (used by preview tap actions). */
   async callService(domain: string, service: string, data: Record<string, unknown>): Promise<void> {
     if (!this.conn) throw new Error('Not connected');

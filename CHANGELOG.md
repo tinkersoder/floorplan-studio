@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Import a floorplan card already in Home Assistant** (toolbar → **Import card**): scans every
+  Lovelace dashboard over the WebSocket (or takes pasted card / view / dashboard YAML) for
+  `custom:floorplan-card` and `picture-elements` cards and imports one as a new project or a new
+  floor. The SVG / image / stylesheet / split-out config is fetched from `/local` or
+  `/api/image/serve` (or decoded from inline data URIs, or taken from files the user adds). The
+  browser measures each rule-bound element: markers land at their rendered centre with entities and
+  actions; `area.<id>` (Ramses Extras convention) and `room_*` shapes become rooms with their HA
+  area / name; the remaining drawing becomes the background with converted elements stripped.
+  Studio's own exports round-trip icons, colours, labels and state rules.
+- Room inspector keeps an imported HA area visible even when it isn't in the entity list.
+- **RAMSES RF / Ramses Extras import** (toolbar → **RAMSES**): adds evohome / RAMSES-II
+  devices as markers. Reads live from Ramses Extras'
+  `ramses_extras/floorplan_helper/get_topology` WebSocket command, falling back to the HA
+  device/entity registries filtered to `ramses_cc` when Extras isn't installed. Offline it accepts a
+  pasted/loaded topology, a `floorplan_seed_studio` response or studio project (merged into the
+  current project, rooms included, scaled to the canvas), or any text with device ids
+  (`known_list`, schema, packet log). Devices land in the room mapped to their HA area (room
+  `areaId` or name), otherwise in a staging row on the floor matching the area's HA floor; class
+  icons, group colours, optional extra entities and state rules (offline, battery low, window
+  open, heat demand). Idempotent and one undo step. Works in both token and dashboard-card mode.
 - **Inline SVG delivery for ha-floorplan (no file copy)**: the export can now
   embed the whole floorplan SVG straight into the card as a `data:` URI
   (`config.image: { location: data:image/svg+xml…, cache: true }`), so there are
