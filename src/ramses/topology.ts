@@ -38,6 +38,12 @@ export interface RamsesDevice {
   display_name: string;
   primary_entity?: string | null;
   entities: RamsesEntity[];
+  /** presentation hints filled at normalise time (ImportDevice contract) */
+  icon?: string;
+  color?: string;
+  kind?: string;
+  /** default-ticked in the import list — HGIs/gateways opt out */
+  suggested?: boolean;
 }
 
 export interface RamsesTopology {
@@ -135,6 +141,15 @@ export const GROUP_COLOR: Record<string, string> = {
 };
 
 export const iconForClass = (cls: string): string => CLASS_ICON[cls] ?? 'help-circle';
+
+/** Fill the neutral presentation fields the editor consumes (ImportDevice). */
+function present<T extends RamsesDevice>(d: T): T {
+  d.icon = iconForClass(d.device_class);
+  d.color = GROUP_COLOR[d.group] ?? GROUP_COLOR.orphan;
+  d.kind = CLASS_LABEL[d.device_class] ?? d.device_class;
+  d.suggested = d.group !== 'hgi';
+  return d;
+}
 
 export function groupForClass(cls: string): string {
   if (cls === 'HGI') return 'hgi';
@@ -259,19 +274,22 @@ export function normaliseExtrasTopology(raw: unknown): RamsesTopology {
     const device_class = normaliseClass(str(d.device_class), device_id, entities);
     const area_id = str(d.area_id) ?? entities.find((e) => e.area_id)?.area_id ?? null;
     const primary = str(d.primary_entity);
-    devices.push({
-      device_id,
-      device_class,
-      // Extras' group is authoritative for heat/hvac/hgi, but it reports zones
-      // and other non-rf children as "orphan" — derive those from the class.
-      group: str(d.group) && d.group !== 'orphan' ? (d.group as string) : groupForClass(device_class),
-      parent: str(d.parent),
-      area_id,
-      area_name: str(d.area_name) ?? (area_id ? areas[area_id]?.name ?? null : null),
-      display_name: str(d.display_name) ?? `${device_class} ${device_id}`,
-      primary_entity: primary && entities.some((e) => e.entity_id === primary) ? primary : selectPrimaryEntity(entities),
-      entities,
-    });
+    devices.push(
+      present({
+        device_id,
+        device_class,
+        // Extras' group is authoritative for heat/hvac/hgi, but it reports zones
+        // and other non-rf children as "orphan" — derive those from the class.
+        group: str(d.group) && d.group !== 'orphan' ? (d.group as string) : groupForClass(device_class),
+        parent: str(d.parent),
+        area_id,
+        area_name: str(d.area_name) ?? (area_id ? areas[area_id]?.name ?? null : null),
+        display_name: str(d.display_name) ?? `${device_class} ${device_id}`,
+        primary_entity:
+          primary && entities.some((e) => e.entity_id === primary) ? primary : selectPrimaryEntity(entities),
+        entities,
+      }),
+    );
   }
   return { source: 'ramses_extras', devices, areas, floors };
 }
@@ -288,6 +306,8 @@ export interface HaDeviceRegistryEntry {
   model?: string | null;
   area_id?: string | null;
   via_device_id?: string | null;
+  /** HA ≥2026.9 child devices carry parent_device_id instead of via_device */
+  parent_device_id?: string | null;
   disabled_by?: string | null;
 }
 
@@ -354,17 +374,21 @@ export function topologyFromRegistries(
     const ents = byDevice.get(d.id) ?? [];
     const device_class = normaliseClass(d.model, device_id, ents);
     const area_id = ents.find((e) => e.area_id)?.area_id ?? d.area_id ?? null;
-    out.push({
-      device_id,
-      device_class,
-      group: groupForClass(device_class),
-      parent: d.via_device_id ? haToRamses.get(d.via_device_id) ?? null : null,
-      area_id,
-      area_name: area_id ? areas[area_id]?.name ?? null : null,
-      display_name: d.name_by_user || d.name || `${device_class} ${device_id}`,
-      primary_entity: selectPrimaryEntity(ents),
-      entities: ents,
-    });
+    out.push(
+      present({
+        device_id,
+        device_class,
+        group: groupForClass(device_class),
+        parent: d.via_device_id ?? d.parent_device_id
+          ? (haToRamses.get((d.via_device_id ?? d.parent_device_id) as string) ?? null)
+          : null,
+        area_id,
+        area_name: area_id ? areas[area_id]?.name ?? null : null,
+        display_name: d.name_by_user || d.name || `${device_class} ${device_id}`,
+        primary_entity: selectPrimaryEntity(ents),
+        entities: ents,
+      }),
+    );
   }
   out.sort((a, b) => a.device_id.localeCompare(b.device_id));
   return { source: 'ramses_cc', devices: out, areas, floors };
@@ -412,7 +436,7 @@ export function topologyFromIds(ids: string[], haEntities: HaEntity[], areaNames
     const ents = byId.get(device_id) ?? [];
     const device_class = normaliseClass(null, device_id, ents);
     const area_id = ents.find((e) => e.area_id)?.area_id ?? null;
-    return {
+    return present({
       device_id,
       device_class,
       group: groupForClass(device_class),
@@ -421,7 +445,7 @@ export function topologyFromIds(ids: string[], haEntities: HaEntity[], areaNames
       display_name: `${device_class} ${device_id}`,
       primary_entity: selectPrimaryEntity(ents),
       entities: ents,
-    };
+    });
   });
   return { source: 'device_ids', devices, areas, floors: {} };
 }

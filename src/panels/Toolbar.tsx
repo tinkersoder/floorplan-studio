@@ -1,4 +1,8 @@
-import { ToolId, useStore } from '../state/store';
+import { useEffect, useState } from 'react';
+import { activeFloor, ToolId, useStore } from '../state/store';
+import { emitAction } from '../plugins/events';
+import { getActions, subscribePlugins } from '../plugins/registry';
+import { iconPath } from '../ui/icons';
 
 const TOOLS: { id: ToolId; label: string; key: string }[] = [
   { id: 'select', label: 'Select', key: 'V' },
@@ -9,14 +13,18 @@ const TOOLS: { id: ToolId; label: string; key: string }[] = [
   { id: 'window', label: 'Window', key: '' },
 ];
 
-export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenRamses, onOpenHaImport, onOpenHelp }: {
+export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenImport, onOpenHaImport, onOpenHelp }: {
   onOpenExport: () => void;
   onOpenProjects: () => void;
   onOpenConnect: () => void;
-  onOpenRamses: () => void;
+  onOpenImport: () => void;
   onOpenHaImport: () => void;
   onOpenHelp: () => void;
 }) {
+  // re-render when a plugin registers/unregisters
+  const [, bump] = useState(0);
+  useEffect(() => subscribePlugins(() => bump((x) => x + 1)), []);
+  const pluginActions = getActions('toolbar');
   const tool = useStore((s) => s.tool);
   const setTool = useStore((s) => s.setTool);
   const mode = useStore((s) => s.mode);
@@ -85,9 +93,33 @@ export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenRam
         <button onClick={onOpenHaImport} disabled={mode === 'preview'} title="Import an ha-floorplan / picture-elements card already in Home Assistant">
           Import card
         </button>
-        <button onClick={onOpenRamses} disabled={mode === 'preview'} title="Import RAMSES RF / Ramses Extras devices as markers">
-          RAMSES
+        <button onClick={onOpenImport} disabled={mode === 'preview'} title="Import devices from registered integrations">
+          Devices
         </button>
+        {pluginActions.map(({ pluginId, action }) => (
+          <button
+            key={`${pluginId}:${action.id}`}
+            disabled={mode === 'preview'}
+            title={action.title ?? action.label}
+            onClick={() => {
+              const st = useStore.getState();
+              emitAction({
+                pluginId,
+                actionId: action.id,
+                projectId: st.project.id,
+                floorId: activeFloor(st.project).id,
+                selection: [...st.selection],
+              });
+            }}
+          >
+            {action.icon && (
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden style={{ verticalAlign: '-2px', marginRight: 4 }}>
+                <path d={iconPath(action.icon)} fill="currentColor" />
+              </svg>
+            )}
+            {action.label}
+          </button>
+        ))}
         <button onClick={onOpenProjects}>Projects</button>
         <button className="fp-primary" onClick={onOpenExport}>Export</button>
         <button onClick={onOpenHelp} title="Help">?</button>

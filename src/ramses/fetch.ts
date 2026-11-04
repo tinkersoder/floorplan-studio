@@ -1,40 +1,22 @@
 // Live RAMSES fetch over whichever Home Assistant link is active:
 // the URL+token HaClient (standalone) or the `hass` object Lovelace injects
-// (HACS card mode).
-import { haClient } from '../ha/client';
-import { getHass } from '../ha/hassBridge';
-import { useStore } from '../state/store';
+// (HACS card mode). The generic WS caller itself lives in ../ha/wsCaller —
+// this file only knows the ramses commands and the registry fallback.
+import { liveWsCaller } from '../ha/wsCaller';
 import {
   HaAreaEntry,
   HaDeviceRegistryEntry,
   HaEntityRegistryEntry,
   HaFloorEntry,
   normaliseExtrasTopology,
-  RamsesTopology,
   topologyFromRegistries,
 } from './topology';
+import type { FetchResult, WsCall } from '../plugins/types';
 
-export type WsCall = <T>(msg: Record<string, unknown>) => Promise<T>;
+export { liveWsCaller };
+export type { FetchResult, WsCall };
 
 export const EXTRAS_TOPOLOGY_WS = 'ramses_extras/floorplan_helper/get_topology';
-
-/** A WebSocket caller for the live HA link, or null when running on demo data. */
-export function liveWsCaller(): WsCall | null {
-  const { conn, usingDemo } = useStore.getState();
-  if (usingDemo || conn.status !== 'connected') return null;
-  if (conn.url === 'this dashboard') {
-    const h = getHass();
-    if (h?.callWS) return (msg) => h.callWS!(msg);
-    if (h?.connection?.sendMessagePromise) return (msg) => h.connection!.sendMessagePromise(msg);
-    return null;
-  }
-  return haClient.connected ? (msg) => haClient.sendWS(msg) : null;
-}
-
-export interface FetchResult {
-  topology: RamsesTopology;
-  note?: string;
-}
 
 /**
  * Prefer Ramses Extras' own floorplan model (it already resolves zones, parent

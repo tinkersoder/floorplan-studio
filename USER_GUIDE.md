@@ -110,32 +110,39 @@ What you get:
 - **picture-elements**: the image becomes the background (canvas = image size) and each positioned
   entity element a marker (`state-label` → live label, conditional elements → marker visibility).
 
-### Import RAMSES RF / Ramses Extras devices
+### Import devices (registered integrations)
 
-For evohome / RAMSES-II systems run through [Ramses RF](https://github.com/ramses-rf/ramses_cc)
-(`ramses_cc`) and, optionally, [Ramses Extras](https://github.com/wimpie70/ramses_extras):
+The **Devices** toolbar button opens the generic device importer. The sources it lists come from
+integrations registered through the [plugin API](#plugin-api-for-integrations) — Floorplan Studio
+ships a bundled RAMSES RF source described below; other integrations (yours?) can register their own.
 
 1. Draw a room for every space and set its **HA area** in the Inspector (or give the room the same
    name as the HA area). This is how devices find their room.
-2. Click **RAMSES** in the toolbar.
-3. **Read RAMSES devices** (needs the Home Assistant link — token or dashboard-card mode):
-   - with **Ramses Extras** installed it calls `ramses_extras/floorplan_helper/get_topology`, which
-     already resolves zones, parent links, display names and each device's primary entity;
-   - without Extras it rebuilds the same list from the HA device/entity/area/floor registries,
-     filtered to `ramses_cc`.
-4. Or **paste / load** offline data:
-   - a saved `get_topology` result (raw or wrapped in the WebSocket `result`),
-   - the response of the Extras service `ramses_extras.floorplan_seed_studio` (or any studio project
-     JSON) — its markers and missing rooms are **merged** into the current project, scaled to this
-     canvas,
-   - a ramses_cc `known_list`, a ramses_rf schema or even a packet log — every device id
-     (`04:123456`, zones `01:123456_02`) is matched to your HA entities.
-5. Review the table: tick devices (gateway is off by default), choose labels, extra entities
+2. Click **Devices** in the toolbar and pick a source (needs the Home Assistant link — token or
+   dashboard-card mode).
+3. Or **paste / load** whatever a source recognises offline — the modal tries each registered
+   source's parser, and a raw studio project JSON merges without one.
+
+**Bundled source: RAMSES RF / Ramses Extras.** For evohome / RAMSES-II systems run through
+[Ramses RF](https://github.com/ramses-rf/ramses_cc) (`ramses_cc`) and, optionally,
+[Ramses Extras](https://github.com/wimpie70/ramses_extras):
+
+- **RAMSES RF / Ramses Extras** (live) — with **Ramses Extras** installed it calls
+  `ramses_extras/floorplan_helper/get_topology`, which already resolves zones, parent links,
+  display names and each device's primary entity; without Extras it rebuilds the same list from
+  the HA device/entity/area/floor registries, filtered to `ramses_cc` (reading both `via_device_id`
+  and the HA 2026.9+ `parent_device_id` for parent links).
+- Offline **paste / load**: a saved `get_topology` result (raw or wrapped in the WebSocket
+  `result`), the response of the Extras service `ramses_extras.floorplan_seed_studio` (or any
+  studio project JSON) — its markers and missing rooms are **merged** into the current project,
+  scaled to this canvas — or a ramses_cc `known_list`, ramses_rf schema or packet log: every device
+  id (`04:123456`, zones `01:123456_02`) is matched to your HA entities.
+4. Review the table: tick devices (gateways are off by default), choose labels, extra entities
    (temperature, heat demand, CO₂…), ready-made **state rules** (offline grey, battery-low blink,
    window-open icon, heat-demand gradient) and marker size. Each row shows where the device goes:
    *room*, *staging row* (bottom edge of the floor matching the area's HA floor, else the active
    floor) or *already on plan*.
-6. **Add markers**. The whole import is one undo step, and running it again only adds devices that
+5. **Add markers**. The whole import is one undo step, and running it again only adds devices that
    aren't on the plan yet.
 
 Icons follow the device class: zone `home-thermometer`, TRV `radiator`, controller `thermostat`,
@@ -197,3 +204,63 @@ After adding the card, toggle one of your lights from the map and confirm the ma
 colour follows the entity state, and that any sensor markers show their live value. If a
 marker sits slightly off, nudge it in the editor (arrow keys) and re-export — because the
 export is embedded, that's just Copy YAML → replace the card contents.
+
+---
+
+## Plugin API for integrations
+
+Floorplan Studio exposes `window.floorplanStudio` so third-party integrations can register their own
+**device sources, toolbar actions and style defaults** — no integration-specific code needs to live
+in this repository. The bundled RAMSES source (`src/ramses/provider.ts`) registers through exactly
+this public API and doubles as the reference implementation.
+
+```ts
+window.floorplanStudio.registerPlugin({
+  id: 'ramses',                 // unique; re-registering replaces (external may supersede bundled)
+  apiVersion: 1,
+  provides: {
+    deviceSources: [{
+      id: 'ramses',
+      title: 'RAMSES RF / Ramses Extras',          // label in the Devices modal
+      description: 'evohome / RAMSES-II devices',
+      fetch: async (ws, ctx) => ({                 // live: called with the active HA WebSocket
+        topology: { source: 'ramses_extras', devices: [...], areas: {}, floors: {} },
+        note: 'optional extra line under the count',
+      }),
+      parse: (text, ctx) => ({ kind: 'topology' | 'project' | 'error' | 'nomatch', ... }),
+    }],
+    actions: [{
+      id: 'ramses.seed-devices', label: 'Add devices', icon: 'devices', location: 'toolbar',
+    }],
+    iconMap: { FAN: 'fan', TRV: 'radiator' },       // class token → mdi icon fallback
+    markerDefaults: { size: 40 },                    // merged: plugin < user opts < device hints
+    stateRulePresets: [                              // appended to imported markers, role-bound
+      { entityRole: 'battery', mode: 'stringMatch', match: 'on', color: '#ef4444', animation: 'blink' },
+    ],
+    css: '/local/my_integration/floorplan.css',      // injected once (card mode: shadow root)
+  },
+});
+```
+
+- **The manifest is data + functions the editor calls** — no DOM refs, no component internals,
+  the editor keeps lifecycle control. Unknown `provides` keys are ignored: plugins and the editor
+  version independently (`apiVersion`).
+- **DeviceTopology** is the neutral model sources return: `devices[]` with `device_id`,
+  `device_class`/`group` (free-form display/grouping tokens), `area_id`, `primary_entity`,
+  `entities[]` (`{entity_id, domain, role}`), plus optional `icon`/`color`/`kind`/`suggested`
+  presentation hints, `actions`/`style`/`visibility` passthrough (per-gesture overrides, e.g. a
+  FAN's double-tap opening a custom card — users can still edit per-marker afterwards), and
+  `parent` for topology-aware integrations.
+- **Events** need no registry — just `addEventListener` on `window`:
+  - `floorplan-studio:action` — a plugin action was clicked.
+    `detail: {pluginId, actionId, projectId, floorId, selection: string[]}`
+  - `floorplan-studio:project-imported` — `detail: {pluginId?, mode, markers, rooms}`
+  - `floorplan-studio:plugins-changed` — `detail: {plugins: string[]}`
+- **`floorplanStudio.importProject(json, {mode})`** — merge a studio project/fragment into the open
+  project in one undo step (`'merge'`, default; floors pair by name, scaled to the canvas) or
+  `'replace'` it. This replaces writing to the editor's IndexedDB directly.
+- **`floorplanStudio.projects`** — `active()`, `list()`, `get(id)`, `save(p)`, `remove(id)`,
+  `open(id)` — the supported way to read/write stored projects.
+- **`floorplanStudio.callWS(msg)`** — call the active Home Assistant WebSocket (throws when not
+  connected); also `floorplanStudio.registry.*` for introspection and `subscribe(cb)` to be notified
+  when the plugin set changes.

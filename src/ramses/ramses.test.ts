@@ -15,9 +15,9 @@ import {
   defaultSelection,
   markerSpacing,
   planProjectMerge,
-  planRamsesImport,
+  planDeviceImport,
   pointInPolygon,
-} from './plan';
+} from '../import/plan';
 
 // Shape of ramses_extras/floorplan_helper/get_topology (build_floorplan_model).
 const extrasTopology = {
@@ -221,7 +221,7 @@ describe('placement plan', () => {
     const sel = defaultSelection(p, topo);
     expect(sel.has('18:006402')).toBe(false); // gateway off by default
     expect(sel.has('37:169161')).toBe(false); // no entities
-    const plan = planRamsesImport(p, topo, p.activeFloorId, opts(sel));
+    const plan = planDeviceImport(p, topo, p.activeFloorId, opts(sel));
     const by = Object.fromEntries(plan.rows.map((r) => [r.device.device_id, r]));
 
     expect(by['01:145038'].status).toBe('room');
@@ -245,7 +245,7 @@ describe('placement plan', () => {
 
   it('builds markers with class icon, extra entities and state rules', () => {
     const p = projectWithRooms();
-    const plan = planRamsesImport(p, topo, p.activeFloorId, opts(new Set(['01:145038_02', '04:056053'])));
+    const plan = planDeviceImport(p, topo, p.activeFloorId, opts(new Set(['01:145038_02', '04:056053'])));
     const zone = plan.adds.find((r) => r.device.device_id === '01:145038_02')!.marker!;
     expect(zone.style.icon).toBe('home-thermometer');
     expect(zone.style.label).toBe('Living room');
@@ -262,10 +262,10 @@ describe('placement plan', () => {
 
   it('is idempotent: a second import skips devices already on the plan', () => {
     const p = projectWithRooms();
-    const plan = planRamsesImport(p, topo, p.activeFloorId, opts(defaultSelection(p, topo)));
+    const plan = planDeviceImport(p, topo, p.activeFloorId, opts(defaultSelection(p, topo)));
     const ids = applyPlan(p, plan);
     expect(ids).toHaveLength(4);
-    const again = planRamsesImport(p, topo, p.activeFloorId, opts(defaultSelection(p, topo)));
+    const again = planDeviceImport(p, topo, p.activeFloorId, opts(defaultSelection(p, topo)));
     expect(again.adds).toHaveLength(0);
     expect(again.rows.filter((r) => r.status === 'exists')).toHaveLength(4);
   });
@@ -273,7 +273,7 @@ describe('placement plan', () => {
   it('only searches the active floor when allFloors is off', () => {
     const p = projectWithRooms();
     p.activeFloorId = p.floors[1].id; // Attic has no rooms
-    const plan = planRamsesImport(p, topo, p.activeFloorId, { ...opts(new Set(['04:056053'])), allFloors: false });
+    const plan = planDeviceImport(p, topo, p.activeFloorId, { ...opts(new Set(['04:056053'])), allFloors: false });
     expect(plan.adds[0].status).toBe('staging');
   });
 
@@ -281,7 +281,7 @@ describe('placement plan', () => {
     const p = projectWithRooms();
     const c = { x: 250, y: 250 };
     p.floors[0].markers.push(createMarker(c.x - 45, c.y, 'light.x'), createMarker(c.x, c.y, 'light.y'));
-    const plan = planRamsesImport(p, topo, p.activeFloorId, opts(new Set(['04:056053'])));
+    const plan = planDeviceImport(p, topo, p.activeFloorId, opts(new Set(['04:056053'])));
     expect(plan.adds[0].marker!.x).toBe(c.x + markerSpacing(opts(new Set())));
   });
 });

@@ -1,3 +1,5 @@
+import './plugins/install'; // window.floorplanStudio before providers register
+import './ramses/provider'; // built-in RAMSES device source (self-registers)
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
