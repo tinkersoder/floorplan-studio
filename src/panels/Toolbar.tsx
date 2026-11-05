@@ -13,12 +13,11 @@ const TOOLS: { id: ToolId; label: string; key: string }[] = [
   { id: 'window', label: 'Window', key: '' },
 ];
 
-export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenImport, onOpenHaImport, onOpenHelp }: {
+export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenImport, onOpenHelp }: {
   onOpenExport: () => void;
   onOpenProjects: () => void;
   onOpenConnect: () => void;
   onOpenImport: () => void;
-  onOpenHaImport: () => void;
   onOpenHelp: () => void;
 }) {
   // re-render when a plugin registers/unregisters
@@ -99,9 +98,6 @@ export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenImp
       <div className="fp-toolbar-group">
         <button onClick={onOpenConnect} title="Connect to Home Assistant">
           {conn.status === 'connected' ? '🟢 HA' : usingDemo ? '◻ Demo' : '⚪ HA'}
-        </button>
-        <button onClick={onOpenHaImport} disabled={mode === 'preview'} title="Import an ha-floorplan / picture-elements card already in Home Assistant">
-          Import card
         </button>
         <button onClick={onOpenImport} disabled={mode === 'preview'} title="Import devices from registered integrations">
           Devices

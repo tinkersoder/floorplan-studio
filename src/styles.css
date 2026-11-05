@@ -130,6 +130,27 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
 }
 
 /* Panels ------------------------------------------------------------------ */
+.fp-left-tabs { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--border); }
+.fp-left-tabs button {
+  flex: 1; background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 4px; cursor: pointer;
+}
+.fp-left-tabs button:hover { color: var(--text); }
+.fp-left-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Devices palette section */
+.fp-dev-source-row { display: flex; gap: 4px; margin-bottom: 6px; }
+.fp-dev-source-row select { flex: 1; min-width: 0; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; }
+.fp-dev-list { overflow-y: auto; max-height: 40vh; display: flex; flex-direction: column; gap: 1px; margin: 6px 0; }
+.fp-dev-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.fp-dev-row:hover { background: var(--panel-2); }
+.fp-dev-row.dim { opacity: 0.5; }
+.fp-dev-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fp-dev-sub { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-dev-opts { margin: 6px 0; font-size: 12px; }
+.fp-dev-opts summary { cursor: pointer; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.fp-dev-footer { align-items: center; }
+
 .fp-panel { padding: 12px; overflow-y: auto; }
 .fp-entities { flex: 1; display: flex; flex-direction: column; min-height: 0; border-bottom: 1px solid var(--border); }
 .fp-layers { flex: 0 0 auto; max-height: 42%; }

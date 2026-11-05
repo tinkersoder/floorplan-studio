@@ -33,6 +33,8 @@ interface StoreState {
   selection: string[];
   tool: ToolId;
   mode: Mode;
+  /** active section in the left palette (edit mode) */
+  leftTab: 'entities' | 'devices' | 'layers';
   viewport: Viewport;
 
   // Entity/state source (demo by default; replaced by live HA when connected)
@@ -55,6 +57,7 @@ interface StoreState {
   select: (ids: string[] | string | null, additive?: boolean) => void;
   setTool: (t: ToolId) => void;
   setMode: (m: Mode) => void;
+  setLeftTab: (t: StoreState['leftTab']) => void;
   setViewport: (v: Partial<Viewport>) => void;
 
   // entity source
@@ -86,6 +89,7 @@ export const useStore = create<StoreState>((set, get) => ({
   selection: [],
   tool: 'select',
   mode: 'edit',
+  leftTab: 'entities',
   viewport: { zoom: 1, panX: 0, panY: 0 },
 
   entities: demoEntities(),
@@ -156,6 +160,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   setTool: (tool) => set({ tool }),
   setMode: (mode) => set({ mode }),
+  setLeftTab: (leftTab) => set({ leftTab }),
   setViewport: (v) => set({ viewport: { ...get().viewport, ...v } }),
 
   setLiveSource: (entities, states, url) =>
