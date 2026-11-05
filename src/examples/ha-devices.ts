@@ -60,6 +60,9 @@ async function fetchHaDevices(call: WsCall): Promise<FetchResult> {
     out.push({
       device_id: `ha_${dev.id}`,
       device_class: primary.entity_id.split('.')[0],
+      // registry has many same-named stale devices (zone churn) — show
+      // the primary entity so rows stay distinguishable
+      kind: primary.entity_id,
       group: primary.platform ?? 'unknown',
       area_id: dev.area_id ?? undefined,
       display_name: dev.name_by_user || dev.name || primary.entity_id,
