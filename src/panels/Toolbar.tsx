@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { activeFloor, ToolId, useStore } from '../state/store';
 import { emitAction } from '../plugins/events';
 import { getActions, subscribePlugins } from '../plugins/registry';
@@ -25,6 +25,16 @@ export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenImp
   const [, bump] = useState(0);
   useEffect(() => subscribePlugins(() => bump((x) => x + 1)), []);
   const pluginActions = getActions('toolbar');
+  const actionGroups = useMemo(() => {
+    const m = new Map<string, typeof pluginActions>();
+    for (const item of pluginActions) {
+      const list = m.get(item.pluginId) ?? [];
+      list.push(item);
+      m.set(item.pluginId, list);
+    }
+    return [...m.entries()];
+  }, [pluginActions]);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const tool = useStore((s) => s.tool);
   const setTool = useStore((s) => s.setTool);
   const mode = useStore((s) => s.mode);
@@ -96,30 +106,54 @@ export function Toolbar({ onOpenExport, onOpenProjects, onOpenConnect, onOpenImp
         <button onClick={onOpenImport} disabled={mode === 'preview'} title="Import devices from registered integrations">
           Devices
         </button>
-        {pluginActions.map(({ pluginId, action }) => (
-          <button
-            key={`${pluginId}:${action.id}`}
-            disabled={mode === 'preview'}
-            title={action.title ?? action.label}
-            onClick={() => {
-              const st = useStore.getState();
-              emitAction({
-                pluginId,
-                actionId: action.id,
-                projectId: st.project.id,
-                floorId: activeFloor(st.project).id,
-                selection: [...st.selection],
-              });
-            }}
-          >
-            {action.icon && (
-              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden style={{ verticalAlign: '-2px', marginRight: 4 }}>
-                <path d={iconPath(action.icon)} fill="currentColor" />
-              </svg>
+        {actionGroups.length > 0 && (
+          <div className="fp-menu-wrap">
+            <button
+              onClick={() => setActionsOpen((v) => !v)}
+              disabled={mode === 'preview'}
+              title="Actions contributed by registered integrations"
+            >
+              Integrations ▾
+            </button>
+            {actionsOpen && (
+              <>
+                <div className="fp-menu-backdrop" onClick={() => setActionsOpen(false)} />
+                <div className="fp-menu">
+                  {actionGroups.map(([pluginId, actions]) => (
+                    <div key={pluginId} className="fp-menu-group">
+                      <div className="fp-menu-head">{pluginId}</div>
+                      {actions.map(({ action }) => (
+                        <button
+                          key={`${pluginId}:${action.id}`}
+                          className="fp-menu-item"
+                          title={action.title ?? action.label}
+                          onClick={() => {
+                            setActionsOpen(false);
+                            const st = useStore.getState();
+                            emitAction({
+                              pluginId,
+                              actionId: action.id,
+                              projectId: st.project.id,
+                              floorId: activeFloor(st.project).id,
+                              selection: [...st.selection],
+                            });
+                          }}
+                        >
+                          {action.icon && (
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden style={{ verticalAlign: '-2px', marginRight: 4 }}>
+                              <path d={iconPath(action.icon)} fill="currentColor" />
+                            </svg>
+                          )}
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
-            {action.label}
-          </button>
-        ))}
+          </div>
+        )}
         <button onClick={onOpenProjects}>Projects</button>
         <button className="fp-primary" onClick={onOpenExport}>Export</button>
         <button onClick={onOpenHelp} title="Help">?</button>
