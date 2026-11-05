@@ -123,7 +123,7 @@ ships a bundled RAMSES RF source described below; other integrations (yours?) ca
 3. Or **paste / load** whatever a source recognises offline — the modal tries each registered
    source's parser, and a raw studio project JSON merges without one.
 
-**Bundled source: MQTT** (`src/examples/mqtt.ts`) — lists devices on the MQTT integration
+**Bundled source: MQTT** (`src/examples/ha-devices.ts`) — lists every device in the HA registry, grouped by integration
 via the HA entity registry. It exists as the **reference implementation** for the plugin
 API, not as an integration play: real integrations ship their own provider as a Lovelace
 resource (see below).
@@ -217,7 +217,7 @@ export is embedded, that's just Copy YAML → replace the card contents.
 
 Floorplan Studio exposes `window.floorplanStudio` so third-party integrations can register their own
 **device sources, actions and style defaults** — no integration-specific code needs to live
-in this repository. The bundled MQTT source (`src/examples/mqtt.ts`) registers through exactly
+in this repository. The bundled HA-registry source (`src/examples/ha-devices.ts`) registers through exactly
 this public API and doubles as the reference implementation.
 
 ```ts

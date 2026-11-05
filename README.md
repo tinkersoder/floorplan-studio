@@ -83,7 +83,7 @@ no HACS? The standalone build below still works.
   sources, or paste whatever a source recognises offline. Devices auto-place into the
   room mapped to their HA area, with class icons and ready-made state rules. Integrations
   ship their own source (e.g. Ramses Extras registers RAMSES devices via
-  `ramses_extras/floorplan_helper`); a bundled **MQTT** source serves as the reference
+  `ramses_extras/floorplan_helper`); a bundled **HA registry** source serves as the reference
   example.
 - **Persistence** — named projects in IndexedDB with autosave; JSON export/import for
   portable backups; undo/redo history.
