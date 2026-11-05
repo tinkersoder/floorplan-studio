@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Plugin API** (`window.floorplanStudio`): third-party integrations can register their own
+  device sources, toolbar actions and style defaults via `registerPlugin({id, apiVersion, provides})`.
+  The manifest is data plus functions the editor calls — no DOM refs are handed out, unknown
+  `provides` keys are ignored so plugins and the editor version independently. Capability slots:
+  `deviceSources` (shown in the **Devices** modal: `fetch(ws)` for live import, `parse(text)` for
+  offline input), `actions` (toolbar items that emit a documented `floorplan-studio:action`
+  CustomEvent with `{pluginId, actionId, projectId, floorId, selection}`), `iconMap`,
+  `markerDefaults`, `stateRulePresets` (role-bound rules appended to imported markers) and `css`
+  (injected once, into the card's shadow root in HACS mode). Also new: `importProject()` merging a
+  project fragment in one undo step, `projects.*` (list/get/save/remove/open) replacing direct
+  IndexedDB access, `callWS()` for the active HA link, and documented events
+  (`floorplan-studio:action`, `floorplan-studio:project-imported`,
+  `floorplan-studio:plugins-changed`). See USER_GUIDE → *Plugin API for integrations*; the bundled
+  RAMSES source registers through the same public API as the reference implementation.
 - **Import a floorplan card already in Home Assistant** (toolbar → **Import card**): scans every
   Lovelace dashboard over the WebSocket (or takes pasted card / view / dashboard YAML) for
   `custom:floorplan-card` and `picture-elements` cards and imports one as a new project or a new
@@ -19,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   area / name; the remaining drawing becomes the background with converted elements stripped.
   Studio's own exports round-trip icons, colours, labels and state rules.
 - Room inspector keeps an imported HA area visible even when it isn't in the entity list.
-- **RAMSES RF / Ramses Extras import** (toolbar → **RAMSES**): adds evohome / RAMSES-II
+- **RAMSES RF / Ramses Extras import** (toolbar → **Devices** → *RAMSES RF / Ramses Extras*): adds evohome / RAMSES-II
   devices as markers. Reads live from Ramses Extras'
   `ramses_extras/floorplan_helper/get_topology` WebSocket command, falling back to the HA
   device/entity registries filtered to `ramses_cc` when Extras isn't installed. Offline it accepts a

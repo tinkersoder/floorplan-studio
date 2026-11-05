@@ -1,5 +1,5 @@
 // Read every Lovelace dashboard over the WebSocket and collect floorplan cards.
-import type { WsCall } from '../ramses/fetch';
+import type { WsCall } from '../ha/wsCaller';
 import { FoundCard, findCards } from './cards';
 
 interface DashboardInfo {
