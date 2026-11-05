@@ -117,8 +117,10 @@ export interface PluginAction {
   label: string;
   /** MDI icon name (no "mdi:" prefix) or a supported icon key */
   icon?: string;
-  /** where the action is rendered; only 'toolbar' is honoured today,
-   *  other values are stored for forward-compat and ignored */
+  /** where the action is rendered; 'toolbar' shows in the grouped
+   *  "Integrations ▾" overflow menu (one menu, actions grouped by
+   *  plugin — never one button per action). 'marker-menu'/'room-menu'
+   *  are stored for forward-compat and ignored today */
   location?: 'toolbar' | 'marker-menu' | 'room-menu';
   /** tooltip */
   title?: string;

@@ -5,7 +5,7 @@
 // Built by vite.hacs.config.ts into a single dist-hacs/floorplan-studio.js that
 // HACS serves as a Lovelace resource.
 import './plugins/install'; // window.floorplanStudio before providers register
-import './ramses/provider'; // built-in RAMSES device source (self-registers)
+import './examples/mqtt'; // bundled example device source (self-registers)
 import { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import App from './App';

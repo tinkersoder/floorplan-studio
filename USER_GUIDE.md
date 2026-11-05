@@ -123,9 +123,15 @@ ships a bundled RAMSES RF source described below; other integrations (yours?) ca
 3. Or **paste / load** whatever a source recognises offline — the modal tries each registered
    source's parser, and a raw studio project JSON merges without one.
 
-**Bundled source: RAMSES RF / Ramses Extras.** For evohome / RAMSES-II systems run through
-[Ramses RF](https://github.com/ramses-rf/ramses_cc) (`ramses_cc`) and, optionally,
-[Ramses Extras](https://github.com/wimpie70/ramses_extras):
+**Bundled source: MQTT** (`src/examples/mqtt.ts`) — lists devices on the MQTT integration
+via the HA entity registry. It exists as the **reference implementation** for the plugin
+API, not as an integration play: real integrations ship their own provider as a Lovelace
+resource (see below).
+
+**RAMSES RF / Ramses Extras** — for evohome / RAMSES-II systems run through
+[Ramses RF](https://github.com/ramses-rf/ramses_cc) (`ramses_cc`),
+[Ramses Extras](https://github.com/wimpie70/ramses_extras) ships its own provider
+(`ramses-studio-provider.js`, auto-registered by the integration):
 
 - **RAMSES RF / Ramses Extras** (live) — with **Ramses Extras** installed it calls
   `ramses_extras/floorplan_helper/get_topology`, which already resolves zones, parent links,
@@ -210,8 +216,8 @@ export is embedded, that's just Copy YAML → replace the card contents.
 ## Plugin API for integrations
 
 Floorplan Studio exposes `window.floorplanStudio` so third-party integrations can register their own
-**device sources, toolbar actions and style defaults** — no integration-specific code needs to live
-in this repository. The bundled RAMSES source (`src/ramses/provider.ts`) registers through exactly
+**device sources, actions and style defaults** — no integration-specific code needs to live
+in this repository. The bundled MQTT source (`src/examples/mqtt.ts`) registers through exactly
 this public API and doubles as the reference implementation.
 
 ```ts

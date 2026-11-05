@@ -79,10 +79,12 @@ no HACS? The standalone build below still works.
   picture-elements cards and bring them back as an editable floor: bound SVG elements → markers at
   their real positions, `area.*` / `room_*` shapes → rooms, the rest of the drawing → background.
   Round-trips Studio's own exports and Ramses Extras' generated floorplans.
-- **RAMSES RF / Ramses Extras import** — pull evohome zones, TRVs, thermostats, ventilation units,
-  CO₂ sensors and remotes straight from HA (Ramses Extras' floorplan helper, or plain `ramses_cc`),
-  or paste a topology / `floorplan_seed_studio` result / `known_list`. Devices auto-place into the
-  room mapped to their HA area, with class icons and ready-made state rules.
+- **Integration device import** — pull devices straight from HA via plugin-provided
+  sources, or paste whatever a source recognises offline. Devices auto-place into the
+  room mapped to their HA area, with class icons and ready-made state rules. Integrations
+  ship their own source (e.g. Ramses Extras registers RAMSES devices via
+  `ramses_extras/floorplan_helper`); a bundled **MQTT** source serves as the reference
+  example.
 - **Persistence** — named projects in IndexedDB with autosave; JSON export/import for
   portable backups; undo/redo history.
 - **Export** — ha-floorplan (SVG + `custom:floorplan-card` YAML + stylesheet), Picture
