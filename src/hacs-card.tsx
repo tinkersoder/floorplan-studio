@@ -4,10 +4,13 @@
 //
 // Built by vite.hacs.config.ts into a single dist-hacs/floorplan-studio.js that
 // HACS serves as a Lovelace resource.
+import './plugins/install'; // window.floorplanStudio before providers register
+import './examples/ha-devices'; // bundled example device source (self-registers)
 import { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import App from './App';
 import { setHass, HassLike } from './ha/hassBridge';
+import { setPluginStyleRoot } from './plugins/registry';
 // `?inline` gives the CSS as a string instead of injecting it into document
 // <head> — we put it in the shadow root instead.
 import cssText from './styles.css?inline';
@@ -38,6 +41,8 @@ class FloorplanStudioCard extends HTMLElement {
     if (this.mounted) return;
     this.mounted = true;
     const shadow = this.attachShadow({ mode: 'open' });
+    // plugin css links land inside this shadow root, not document.head
+    setPluginStyleRoot(shadow as unknown as HTMLElement);
     const style = document.createElement('style');
     style.textContent = HOST_CSS + cssText;
     shadow.appendChild(style);
