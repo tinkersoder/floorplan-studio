@@ -65,13 +65,38 @@ export function ruleAnimation(
   rules: StateRule[],
   states: Record<string, HaState>,
   fallbackEntity?: string,
-): 'pulse' | 'blink' | null {
+): 'pulse' | 'blink' | 'spin' | null {
   for (const r of rules) {
     const eid = r.entityId ?? fallbackEntity;
     const st = eid ? states[eid] : undefined;
     if (ruleColor(r, st) && r.animation && r.animation !== 'none') return r.animation;
   }
   return null;
+}
+
+/**
+ * Duration (in seconds) for a matching `spin` rule: scales inversely with a
+ * numeric state (e.g. fan speed percentage 0..100 -> 2.4s..0.5s, or discrete
+ * speed 1..5 -> 2.2s..0.6s). Non-numeric states fall back to 1.4s.
+ */
+export function ruleSpinDuration(
+  rules: StateRule[],
+  states: Record<string, HaState>,
+  fallbackEntity?: string,
+): string | undefined {
+  for (const r of rules) {
+    const eid = r.entityId ?? fallbackEntity;
+    const st = eid ? states[eid] : undefined;
+    if (!ruleColor(r, st) || r.animation !== 'spin') continue;
+    const num = parseFloat(st?.state ?? '');
+    if (Number.isNaN(num) || num <= 0) return '1.4s';
+    const min = r.min ?? 0;
+    const max = r.max ?? (num <= 5 ? 5 : 100);
+    const t = clamp01((num - min) / (max - min || 1));
+    const sec = Math.max(0.45, 2.4 - t * 1.85);
+    return `${sec.toFixed(2)}s`;
+  }
+  return undefined;
 }
 
 /** Effective marker color for the given source states (preview mode). */

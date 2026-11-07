@@ -73,7 +73,7 @@ export interface StateRule {
 
   // optional visual extras applied by markers
   icon?: string;
-  animation?: 'none' | 'pulse' | 'blink';
+  animation?: 'none' | 'pulse' | 'blink' | 'spin';
 }
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ import {
   parseFloorplanCard,
   parsePictureElements,
   pictureImageRef,
+  replaceCardAtIndex,
 } from './cards';
 
 const dashboard = {
@@ -60,6 +61,24 @@ describe('card discovery', () => {
       ['floorplan', 'Home › Overview'],
       ['picture-elements', 'Home › Garden'],
     ]);
+  });
+
+  it('replaces a discovered card in-place by its discovery index', () => {
+    const clone = structuredClone(dashboard);
+    const ok0 = replaceCardAtIndex(clone, 0, { type: 'custom:floorplan-card', config: { image: '/local/new.svg', rules: [] } });
+    expect(ok0).toBe(true);
+    expect(findCards(clone, 'Home')[0].card).toEqual({
+      type: 'custom:floorplan-card',
+      config: { image: '/local/new.svg', rules: [] },
+    });
+
+    const ok1 = replaceCardAtIndex(clone, 1, { type: 'picture-elements', image: '/local/new.png', elements: [] });
+    expect(ok1).toBe(true);
+    expect(findCards(clone, 'Home')[1].card).toEqual({
+      type: 'picture-elements',
+      image: '/local/new.png',
+      elements: [],
+    });
   });
 
   it('accepts pasted single cards, lists and bare ha-floorplan config bodies', () => {

@@ -6,6 +6,9 @@ import { ExportOptions } from './svg';
 import { buildHaFloorplan } from './haFloorplan';
 import { buildPictureElements } from './pictureElements';
 import { svgToPngBlob, dataUriToBlob } from './png';
+import { liveWsCaller } from '../ha/wsCaller';
+import type { FoundCard } from '../haimport/cards';
+import { scanDashboards, updateDashboardCard } from '../haimport/scan';
 
 type Target = 'ha-floorplan' | 'picture-elements' | 'svg';
 type DeployStatus = 'checking' | 'missing' | 'stale' | 'match' | 'unknown';
@@ -24,6 +27,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   // card (nothing to copy); 'file' = /local/floorplan/x.svg you drop in www.
   const [delivery, setDelivery] = useState<'inline' | 'file'>('inline');
   const [copied, setCopied] = useState(false);
+  useStore((s) => s.conn);
+  const call = liveWsCaller();
+  const [haCards, setHaCards] = useState<FoundCard[] | null>(null);
+  const [selectedCardKey, setSelectedCardKey] = useState('');
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   const inline = target === 'ha-floorplan' && delivery === 'inline';
   const baseName = slug(floor.name || project.name);
@@ -107,6 +116,39 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     }
   }
 
+  async function scanHaCards() {
+    if (!call) return;
+    setUpdateBusy(true);
+    setUpdateMsg(null);
+    try {
+      const { cards } = await scanDashboards(call);
+      setHaCards(cards);
+      const firstWritable = cards.find((c) => (c.dashboardMode ?? 'storage') === 'storage');
+      setSelectedCardKey(firstWritable?.key ?? cards[0]?.key ?? '');
+    } catch (e) {
+      setUpdateMsg({ kind: 'err', text: (e as Error).message || String(e) });
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
+  async function writeBackToHaCard() {
+    if (!call || !haCards) return;
+    const found = haCards.find((c) => c.key === selectedCardKey);
+    if (!found) return;
+    if (!confirm(`Overwrite card in "${found.where}" (${found.kind}) with this exported YAML?`)) return;
+    setUpdateBusy(true);
+    setUpdateMsg(null);
+    try {
+      await updateDashboardCard(call, found, yamlText);
+      setUpdateMsg({ kind: 'ok', text: `Updated card in "${found.where}". Reload the dashboard to see changes.` });
+    } catch (e) {
+      setUpdateMsg({ kind: 'err', text: (e as Error).message || String(e) });
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
   return (
     <Modal title="Export to Home Assistant" onClose={onClose} wide>
       <div className="fp-export-grid">
@@ -166,7 +208,49 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             <button className="fp-primary" onClick={copy}>{copied ? 'Copied!' : 'Copy YAML/SVG'}</button>
             <button onClick={downloadFiles}>Download files</button>
             {target === 'ha-floorplan' && <button onClick={downloadPng}>Download PNG</button>}
+            {target !== 'svg' && call && !haCards && (
+              <button onClick={scanHaCards} disabled={updateBusy} title="Scan Home Assistant dashboards and overwrite an existing floorplan card">
+                {updateBusy ? 'Scanning…' : 'Update card in HA…'}
+              </button>
+            )}
           </div>
+
+          {target !== 'svg' && haCards && (
+            <div className="fp-rx-source" style={{ marginTop: 10 }}>
+              <div className="fp-subtitle" style={{ marginTop: 0 }}>Update existing card in Home Assistant</div>
+              {haCards.length === 0 ? (
+                <div className="fp-hint">No floorplan or picture-elements cards found on your dashboards.</div>
+              ) : (
+                <div className="fp-rx-row">
+                  <select
+                    value={selectedCardKey}
+                    onChange={(e) => setSelectedCardKey(e.target.value)}
+                    style={{ flex: 1, minWidth: 0 }}
+                  >
+                    {haCards.map((c) => {
+                      const ro = (c.dashboardMode ?? 'storage') !== 'storage';
+                      return (
+                        <option key={c.key} value={c.key} disabled={ro}>
+                          {c.where} ({c.kind}){ro ? ' [YAML mode — read-only]' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <button
+                    className="fp-primary"
+                    disabled={updateBusy || !selectedCardKey}
+                    onClick={writeBackToHaCard}
+                  >
+                    {updateBusy ? 'Saving…' : 'Overwrite card'}
+                  </button>
+                  <button className="fp-mini" disabled={updateBusy} onClick={scanHaCards} title="Rescan dashboards">
+                    ↻
+                  </button>
+                </div>
+              )}
+              {updateMsg && <div className={`fp-note ${updateMsg.kind}`}>{updateMsg.text}</div>}
+            </div>
+          )}
         </div>
 
         <div className="fp-export-preview">

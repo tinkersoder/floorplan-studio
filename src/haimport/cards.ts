@@ -19,6 +19,12 @@ export interface FoundCard {
   where: string;
   /** the card object itself (type + config / image + elements) */
   card: Loose;
+  /** dashboard url_path (null = default Overview dashboard) when scanned live */
+  urlPath?: string | null;
+  /** 0-based index among floorplan/picture-elements cards in that dashboard */
+  cardIndex?: number;
+  /** dashboard mode ('storage' is writable via lovelace/config/save; 'yaml' is read-only) */
+  dashboardMode?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +73,53 @@ export function findCards(root: unknown, dashboardTitle: string): FoundCard[] {
   }
   walk(root, [dashboardTitle]);
   return out;
+}
+
+/**
+ * Replace the `targetIndex`-th floorplan / picture-elements card inside a cloned
+ * Lovelace dashboard config (walking in the exact same order as `findCards`).
+ * Returns true if the card was found and replaced.
+ */
+export function replaceCardAtIndex(root: unknown, targetIndex: number, replacement: Loose): boolean {
+  let seenCount = 0;
+  const visited = new Set<unknown>();
+
+  function walk(node: unknown): boolean {
+    if (!node || typeof node !== 'object' || visited.has(node)) return false;
+    visited.add(node);
+    if (Array.isArray(node)) {
+      for (let i = 0; i < node.length; i++) {
+        const item = node[i];
+        if (isObj(item) && cardKind(item)) {
+          if (seenCount === targetIndex) {
+            node[i] = replacement;
+            return true;
+          }
+          seenCount++;
+          continue;
+        }
+        if (walk(item)) return true;
+      }
+      return false;
+    }
+    const o = node as Loose;
+    for (const k of ['views', 'sections', 'cards', 'card', 'elements']) {
+      if (!(k in o)) continue;
+      const child = o[k];
+      if (!Array.isArray(child) && isObj(child) && cardKind(child)) {
+        if (seenCount === targetIndex) {
+          o[k] = replacement;
+          return true;
+        }
+        seenCount++;
+        continue;
+      }
+      if (walk(child)) return true;
+    }
+    return false;
+  }
+
+  return walk(root);
 }
 
 /** Cards from pasted YAML/JSON: a single card, a list, a view or a full dashboard. */

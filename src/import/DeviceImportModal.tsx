@@ -1,23 +1,26 @@
+// Generic "Import devices" modal — the editor side of the deviceSources
+// capability. Registered providers (src/plugins/types.ts) supply fetch/parse;
+// this modal only knows the neutral DeviceTopology contract: tick devices,
+// preview placement (room match / staging row), apply in one undo step.
 import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { Modal } from '../ui/Modal';
 import { iconPath } from '../ui/icons';
 import type { Project } from '../model/schema';
-import { EXTRAS_TOPOLOGY_WS, fetchRamsesTopology, liveWsCaller } from './fetch';
+import { liveWsCaller } from '../ha/wsCaller';
 import {
-  CLASS_LABEL,
-  GROUP_COLOR,
-  iconForClass,
-  parseRamsesInput,
-  RamsesTopology,
-  topologyFromIds,
-} from './topology';
+  getDeviceSources,
+  getIconMap,
+  getMarkerDefaults,
+  getStateRulePresets,
+} from '../plugins/registry';
+import type { DeviceTopology, ParsedSourceInput } from '../plugins/types';
 import {
   applyMerge,
   applyPlan,
   defaultSelection,
   planProjectMerge,
-  planRamsesImport,
+  planDeviceImport,
   RowStatus,
 } from './plan';
 
@@ -31,23 +34,26 @@ const STATUS_TEXT: Record<RowStatus, string> = {
   off: 'skipped',
 };
 
-const SOURCE_TEXT: Record<RamsesTopology['source'], string> = {
-  ramses_extras: 'Ramses Extras floorplan helper',
-  ramses_cc: 'ramses_cc device registry',
-  device_ids: 'device ids matched to HA entities',
-};
+const FALLBACK_COLOR = '#ffc107';
 
-export function RamsesImportModal({ onClose }: { onClose: () => void }) {
+function isProject(v: unknown): v is Project {
+  return !!v && typeof v === 'object' && Array.isArray((v as { floors?: unknown }).floors);
+}
+
+export function DeviceImportModal({ onClose }: { onClose: () => void }) {
   const project = useStore((s) => s.project);
   const entities = useStore((s) => s.entities);
   const usingDemo = useStore((s) => s.usingDemo);
   useStore((s) => s.conn); // re-render when the HA link changes
   const call = liveWsCaller();
 
+  const sources = getDeviceSources();
+  const ctx = useMemo(() => ({ entities, usingDemo }), [entities, usingDemo]);
+
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
-  const [topo, setTopo] = useState<RamsesTopology | null>(null);
+  const [topo, setTopo] = useState<DeviceTopology | null>(null);
   const [incoming, setIncoming] = useState<Project | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [markerSize, setMarkerSize] = useState(32);
@@ -58,22 +64,23 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
   const [includeRooms, setIncludeRooms] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function loadTopology(t: RamsesTopology, note?: string) {
+  function loadTopology(t: DeviceTopology, note?: string) {
     setTopo(t);
     setIncoming(null);
     setSelected(defaultSelection(useStore.getState().project, t));
     setMsg({
       kind: 'info',
-      text: `${t.devices.length} RAMSES devices from the ${SOURCE_TEXT[t.source]}.${note ? ' ' + note : ''}`,
+      text: `${t.devices.length} devices from ${t.sourceLabel ?? t.source}.${note ? ' ' + note : ''}`,
     });
   }
 
-  async function fetchLive() {
-    if (!call) return;
+  async function fetchSource(id: string) {
+    const src = sources.find((s) => s.source.id === id)?.source;
+    if (!src?.fetch || !call) return;
     setBusy(true);
     setMsg(null);
     try {
-      const { topology, note } = await fetchRamsesTopology(call);
+      const { topology, note } = await src.fetch(call, ctx);
       loadTopology(topology, note);
     } catch (e) {
       setMsg({ kind: 'err', text: (e as Error).message || String(e) });
@@ -83,30 +90,53 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
   }
 
   function parse(src: string) {
-    const r = parseRamsesInput(src);
-    switch (r.kind) {
-      case 'topology':
-        return loadTopology(r.topology);
-      case 'project':
-        setTopo(null);
-        setIncoming(r.project);
-        return setMsg({
-          kind: 'info',
-          text: `Studio project "${r.project.name ?? 'seeded'}" with ${r.project.floors.length} floor(s) — its markers can be merged into this project.`,
-        });
-      case 'ids': {
-        const t = topologyFromIds(r.ids, entities);
-        const matched = t.devices.filter((d) => d.entities.length).length;
-        return loadTopology(
-          t,
-          usingDemo
-            ? 'Connect to Home Assistant first — device ids are matched against your real entity list.'
-            : `${matched} matched to HA entities by id.`,
-        );
+    // A raw studio project merges without needing a provider's parser.
+    try {
+      const data = JSON.parse(src);
+      const unwrapped = (data as { project_json?: unknown })?.project_json ?? data;
+      if (typeof unwrapped === 'string') {
+        const inner = JSON.parse(unwrapped);
+        if (isProject(inner)) return loadProject(inner);
       }
-      default:
-        setMsg({ kind: 'err', text: r.error });
+      if (isProject(unwrapped)) return loadProject(unwrapped);
+    } catch {
+      /* not JSON — fall through to provider parsers */
     }
+    for (const { source } of sources) {
+      if (!source.parse) continue;
+      let r: ParsedSourceInput;
+      try {
+        r = source.parse(src, ctx);
+      } catch (e) {
+        setMsg({ kind: 'err', text: `${source.title}: ${(e as Error).message || e}` });
+        return;
+      }
+      switch (r.kind) {
+        case 'topology':
+          return loadTopology(r.topology, r.note);
+        case 'project':
+          return loadProject(r.project);
+        case 'error':
+          return setMsg({ kind: 'err', text: r.error });
+        default:
+          continue; // nomatch — try the next source
+      }
+    }
+    setMsg({
+      kind: 'err',
+      text: sources.some((s) => s.source.parse)
+        ? 'No registered source recognised this input.'
+        : 'No source can parse pasted input — connect to Home Assistant and fetch devices instead.',
+    });
+  }
+
+  function loadProject(p: Project) {
+    setTopo(null);
+    setIncoming(p);
+    setMsg({
+      kind: 'info',
+      text: `Studio project "${p.name ?? 'seeded'}" with ${p.floors.length} floor(s) — its markers can be merged into this project.`,
+    });
   }
 
   async function loadFile(file?: File | null) {
@@ -119,13 +149,16 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
   const plan = useMemo(
     () =>
       topo
-        ? planRamsesImport(project, topo, project.activeFloorId, {
+        ? planDeviceImport(project, topo, project.activeFloorId, {
             selected,
             markerSize,
             labels,
             extraEntities,
             stateRules,
             allFloors,
+            iconMap: getIconMap(),
+            markerDefaults: getMarkerDefaults(),
+            presets: getStateRulePresets().map((p) => p.preset),
           })
         : null,
     [project, topo, selected, markerSize, labels, extraEntities, stateRules, allFloors],
@@ -148,6 +181,12 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
     }
     return c;
   }, [plan]);
+
+  /** distinct group tokens present in the topology → one select-button each */
+  const groups = useMemo(
+    () => (topo ? [...new Set(topo.devices.map((d) => d.group).filter(Boolean))] : []),
+    [topo],
+  );
 
   function toggle(id: string) {
     setSelected((s) => {
@@ -197,26 +236,34 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
 
   const mergeMarkers = merge?.reduce((n, m) => n + m.markers.length, 0) ?? 0;
   const mergeRooms = merge?.reduce((n, m) => n + m.rooms.length, 0) ?? 0;
+  const iconMap = getIconMap();
 
   return (
-    <Modal title="Import from RAMSES RF / Ramses Extras" onClose={onClose} wide>
+    <Modal title="Import devices" onClose={onClose} wide>
       <p className="fp-modal-intro">
-        Drop your evohome / RAMSES-II devices onto the plan as markers — zones, radiator valves, thermostats,
-        ventilation units, CO₂ sensors and remotes. Devices whose HA area matches a room (the room's{' '}
+        Drop devices onto the plan as markers. Devices whose HA area matches a room (the room's{' '}
         <em>HA area</em> or its name) land inside that room; the rest wait in a staging row at the bottom of
-        the floor.
+        the floor. Sources below are contributed by registered integrations.
       </p>
 
       <div className="fp-rx-sources">
         <div className="fp-rx-source">
           <div className="fp-subtitle">From Home Assistant</div>
-          <button className="fp-primary" disabled={!call || busy} onClick={fetchLive}>
-            {busy ? 'Reading devices…' : 'Read RAMSES devices'}
-          </button>
+          {sources.filter((s) => s.source.fetch).length === 0 && (
+            <div className="fp-hint">No live device sources registered.</div>
+          )}
+          {sources
+            .filter((s) => s.source.fetch)
+            .map(({ pluginId, source }) => (
+              <div key={`${pluginId}:${source.id}`} style={{ marginBottom: 8 }}>
+                <button className="fp-primary" disabled={!call || busy} onClick={() => fetchSource(source.id)}>
+                  {busy ? 'Reading devices…' : source.title}
+                </button>
+                {source.description && <div className="fp-hint">{source.description}</div>}
+              </div>
+            ))}
           <div className="fp-hint">
-            {call
-              ? 'Uses Ramses Extras when installed, otherwise the ramses_cc integration directly.'
-              : 'Connect to Home Assistant first (top-right HA button).'}
+            {call ? '' : 'Connect to Home Assistant first (top-right HA button).'}
           </div>
         </div>
         <div className="fp-rx-source">
@@ -225,7 +272,9 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
             className="fp-rx-paste"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Ramses Extras ${EXTRAS_TOPOLOGY_WS} result,\nfloorplan_seed_studio response / studio project JSON,\nor ramses_cc known_list / schema (any text with ids like 04:123456)`}
+            placeholder={
+              'A studio project JSON, an integration topology response,\nor any text a registered source recognises'
+            }
             spellCheck={false}
           />
           <div className="fp-modal-actions fp-rx-row">
@@ -256,7 +305,7 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
             </label>
             <label className="fp-check">
               <input type="checkbox" checked={extraEntities} onChange={(e) => setExtraEntities(e.target.checked)} />
-              Attach temperature / demand / CO₂ entities
+              Attach measurement entities (temperature, demand…)
             </label>
             <label className="fp-check">
               <input type="checkbox" checked={stateRules} onChange={(e) => setStateRules(e.target.checked)} />
@@ -282,8 +331,11 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
           <div className="fp-rx-row fp-rx-select">
             <span>Select:</span>
             <button className="fp-mini" onClick={() => selectWhere(() => true)}>all</button>
-            <button className="fp-mini" onClick={() => selectWhere((g) => g === 'heat')}>heating</button>
-            <button className="fp-mini" onClick={() => selectWhere((g) => g === 'hvac')}>ventilation</button>
+            {groups.map((g) => (
+              <button key={g} className="fp-mini" onClick={() => selectWhere((x) => x === g)}>
+                {g}
+              </button>
+            ))}
             <button className="fp-mini" onClick={() => setSelected(new Set())}>none</button>
             <span className="fp-rx-summary">
               {plan.adds.length} to add · {counts.room} in rooms · {counts.staging} staged · {counts.exists} already
@@ -326,9 +378,12 @@ export function RamsesImportModal({ onClose }: { onClose: () => void }) {
                       <td>
                         <span className="fp-rx-type">
                           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
-                            <path d={iconPath(iconForClass(d.device_class))} fill={GROUP_COLOR[d.group] ?? GROUP_COLOR.orphan} />
+                            <path
+                              d={iconPath(d.icon ?? iconMap[d.device_class] ?? 'help-circle')}
+                              fill={d.color ?? FALLBACK_COLOR}
+                            />
                           </svg>
-                          {CLASS_LABEL[d.device_class] ?? d.device_class}
+                          {d.kind ?? d.device_class}
                         </span>
                       </td>
                       <td>{d.area_name || d.area_id || <span className="fp-rx-sub">—</span>}</td>
