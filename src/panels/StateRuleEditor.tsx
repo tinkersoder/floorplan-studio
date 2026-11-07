@@ -136,6 +136,7 @@ export function StateRuleEditor({
                   { value: 'none', label: 'None' },
                   { value: 'pulse', label: 'Pulse' },
                   { value: 'blink', label: 'Blink' },
+                  { value: 'spin', label: 'Spin (speed-proportional)' },
                 ]}
               />
             </Field>

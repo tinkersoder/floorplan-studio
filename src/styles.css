@@ -102,6 +102,24 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
 .fp-mode { background: var(--panel-2); border-radius: 6px; padding: 2px; gap: 2px; }
 .fp-mode button { border: none; background: transparent; }
 
+/* Integrations dropdown (plugin toolbar actions, grouped by plugin) */
+.fp-menu-wrap { position: relative; }
+.fp-menu-backdrop { position: fixed; inset: 0; z-index: 60; }
+.fp-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 70;
+  min-width: 190px; padding: 4px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+}
+.fp-menu-group + .fp-menu-group { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.fp-menu-head { font-size: 11px; color: var(--muted); padding: 4px 8px 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+.fp-menu-item {
+  display: flex; align-items: center; width: 100%; gap: 6px;
+  background: none; border: 0; color: var(--text);
+  padding: 6px 8px; border-radius: 4px; text-align: left; cursor: pointer;
+}
+.fp-menu-item:hover { background: var(--panel); }
+
 /* Canvas ------------------------------------------------------------------ */
 .fp-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
 .fp-preview-badge {
@@ -112,6 +130,33 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
 }
 
 /* Panels ------------------------------------------------------------------ */
+.fp-left-tabs { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--border); }
+.fp-left-tabs button {
+  flex: 1; background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 4px; cursor: pointer;
+}
+.fp-left-tabs button:hover { color: var(--text); }
+.fp-left-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Devices palette section */
+.fp-dev-source-row { display: flex; gap: 4px; margin-bottom: 6px; }
+.fp-dev-source-row select { flex: 1; min-width: 0; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; }
+.fp-dev-list { overflow-y: auto; max-height: 40vh; display: flex; flex-direction: column; gap: 1px; margin: 6px 0; }
+.fp-dev-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.fp-dev-row:hover { background: var(--panel-2); }
+.fp-dev-row.dim { opacity: 0.5; }
+.fp-dev-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fp-dev-sub { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-dev-opts { margin: 6px 0; font-size: 12px; }
+.fp-dev-opts summary { cursor: pointer; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.fp-dev-footer { align-items: center; }
+.fp-cov-list { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; }
+.fp-cov-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--border); font-size: 11px; cursor: pointer; text-align: left; color: var(--text); }
+.fp-cov-row:hover { border-color: var(--accent); }
+.fp-cov-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.fp-cov-dot.covered { background: #22c55e; }
+.fp-cov-count { margin-left: auto; color: var(--muted); font-size: 10px; }
+
 .fp-panel { padding: 12px; overflow-y: auto; }
 .fp-entities { flex: 1; display: flex; flex-direction: column; min-height: 0; border-bottom: 1px solid var(--border); }
 .fp-layers { flex: 0 0 auto; max-height: 42%; }
@@ -218,8 +263,10 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
 /* Animations -------------------------------------------------------------- */
 @keyframes fp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 @keyframes fp-blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0.1; } }
+@keyframes fp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .fp-anim-pulse { animation: fp-pulse 1.4s ease-in-out infinite; }
 .fp-anim-blink { animation: fp-blink 1s step-end infinite; }
+.fp-anim-spin { animation: fp-spin var(--fp-spin-duration, 1.4s) linear infinite; transform-origin: 0 0; }
 
 /* Responsive / touch ------------------------------------------------------ */
 @media (max-width: 900px) {

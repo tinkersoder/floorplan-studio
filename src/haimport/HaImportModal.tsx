@@ -4,7 +4,7 @@ import { useStore } from '../state/store';
 import { Modal } from '../ui/Modal';
 import { createProject } from '../model/defaults';
 import { saveProject } from '../persist/db';
-import { liveWsCaller } from '../ramses/fetch';
+import { liveWsCaller } from '../ha/wsCaller';
 import { cardsFromText, cardSummary, FoundCard, parseFloorplanCard, parsePictureElements, shortRef } from './cards';
 import { basename, isSvgRef, liveAssetContext, loadText } from './assets';
 import { scanDashboards } from './scan';

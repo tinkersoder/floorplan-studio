@@ -6,9 +6,11 @@ import {
   markerIcon,
   markerVisible,
   ruleAnimation,
+  ruleSpinDuration,
   stateLabel,
 } from '../state/resolve';
 import { iconPath } from '../ui/icons';
+import { markerGestureHandlers, GestureTimers } from './actions';
 import { snapPoint } from './geometry';
 
 interface Props {
@@ -46,13 +48,17 @@ function MarkerNode({
     moved: boolean;
   } | null>(null);
 
+  const gestureTimers = useRef<GestureTimers>({}).current;
   const preview = mode === 'preview';
   if (preview && !markerVisible(m, states)) return null;
+  // Preview = live-card semantics: clicks fire the marker's gesture actions.
+  const gesture = preview ? markerGestureHandlers(m, gestureTimers) : null;
 
   const locked = floor.layers.entities.locked;
   const color = preview ? markerColor(m, states) : m.style.color;
   const icon = preview ? markerIcon(m, states) : m.style.icon;
   const anim = preview ? ruleAnimation(m.stateRules, states, m.entities[0]) : null;
+  const spinDur = preview && anim === 'spin' ? ruleSpinDuration(m.stateRules, states, m.entities[0]) : undefined;
   const size = m.style.size;
 
   function onPointerDown(e: React.PointerEvent) {
@@ -121,10 +127,12 @@ function MarkerNode({
     <g
       transform={`translate(${m.x} ${m.y})`}
       style={{ cursor: mode === 'edit' && !locked ? 'move' : 'pointer' }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      className={anim ? `fp-anim-${anim}` : undefined}
+      onPointerDown={gesture?.onPointerDown ?? onPointerDown}
+      onPointerMove={gesture?.onPointerMove ?? onPointerMove}
+      onPointerUp={gesture?.onPointerUp ?? onPointerUp}
+      onClick={gesture?.onClick}
+      onDoubleClick={gesture?.onDoubleClick}
+      className={anim && anim !== 'spin' ? `fp-anim-${anim}` : undefined}
     >
       {/* selection ring */}
       {selected && mode === 'edit' && (
@@ -136,11 +144,16 @@ function MarkerNode({
       {m.style.type === 'icon' && (
         <>
           <circle r={size * 0.5} fill="rgba(20,24,33,0.55)" />
-          <path
-            d={iconPath(icon)}
-            fill={color}
-            transform={`translate(${-size * 0.35} ${-size * 0.35}) scale(${(size * 0.7) / 24})`}
-          />
+          <g
+            className={anim === 'spin' ? 'fp-anim-spin' : undefined}
+            style={spinDur ? ({ '--fp-spin-duration': spinDur } as React.CSSProperties) : undefined}
+          >
+            <path
+              d={iconPath(icon)}
+              fill={color}
+              transform={`translate(${-size * 0.35} ${-size * 0.35}) scale(${(size * 0.7) / 24})`}
+            />
+          </g>
         </>
       )}
 
