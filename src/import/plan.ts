@@ -1,15 +1,20 @@
-// Placement planner for the RAMSES import.
+// Placement planner for device imports.
 //
-// Given the current project and a normalised RamsesTopology, decide for each
-// device whether it is already on the plan, lands inside a room (room.areaId /
-// room name ↔ HA area), or is parked in a staging row along the bottom edge of
-// a floor for the user to drag into place. The plan is computed without
-// touching the store so the modal can preview it, then applied in one commit
-// (= one undo step).
+// Given the current project and a normalised DeviceTopology (returned by a
+// registered device source), decide for each device whether it is already on
+// the plan, lands inside a room (room.areaId / room name ↔ HA area), or is
+// parked in a staging row along the bottom edge of a floor for the user to
+// drag into place. The plan is computed without touching the store so the
+// modal can preview it, then applied in one commit (= one undo step).
+//
+// Everything here is generic: devices arrive with their presentation
+// (icon/color/kind) already resolved by the provider; iconMap/markerDefaults/
+// stateRulePresets are plugin contributions merged in via ImportOptions.
 import { nanoid } from 'nanoid';
 import { centroid } from '../canvas/geometry';
-import type { Floor, Marker, Point, Project, Room, StateRule } from '../model/schema';
-import { GROUP_COLOR, iconForClass, RamsesDevice, RamsesTopology } from './topology';
+import type { Floor, Marker, MarkerStyle, Point, Project, Room, StateRule } from '../model/schema';
+import { createRoom } from '../model/defaults';
+import type { DeviceTopology, ImportDevice, ImportedFloorRooms, StateRulePreset } from '../plugins/types';
 
 export interface ImportOptions {
   /** device ids the user ticked */
@@ -23,12 +28,18 @@ export interface ImportOptions {
   stateRules: boolean;
   /** look for matching rooms on every floor, not only the active one */
   allFloors: boolean;
+  /** plugin class-token → icon fallback for devices without an icon */
+  iconMap?: Record<string, string>;
+  /** plugin marker style defaults (plugin < user opts < device hints) */
+  markerDefaults?: Partial<MarkerStyle>;
+  /** plugin state-rule presets appended after the built-in rules */
+  presets?: StateRulePreset[];
 }
 
 export type RowStatus = 'room' | 'staging' | 'exists' | 'no-entities' | 'off';
 
 export interface PlanRow {
-  device: RamsesDevice;
+  device: ImportDevice;
   status: RowStatus;
   floorId?: string;
   floorName?: string;
@@ -61,7 +72,7 @@ export function pointInPolygon(p: Point, poly: Point[]): boolean {
 }
 
 /** Does this room represent the device's HA area? (areaId first, then name slugs) */
-export function roomMatchesDevice(room: Room, dev: RamsesDevice): boolean {
+export function roomMatchesDevice(room: Room, dev: ImportDevice): boolean {
   if (!dev.area_id && !dev.area_name) return false;
   if (room.areaId && dev.area_id && room.areaId === dev.area_id) return true;
   const keys = new Set([slug(dev.area_id), slug(dev.area_name)].filter(Boolean));
@@ -78,13 +89,15 @@ export function placedEntities(project: Project): Set<string> {
 
 const EXTRA_ROLES = ['temperature', 'setpoint', 'heat_demand', 'humidity', 'co2', 'fan_rate', 'window_open'];
 const MAX_EXTRA = 4;
+const FALLBACK_COLOR = '#ffc107';
+const FALLBACK_ICON = 'help-circle';
 
 function ruleId() {
   return nanoid(6);
 }
 
 /** Sensible preview rules from the entities the device exposes. Order = priority. */
-export function defaultRules(dev: RamsesDevice, primary: string, baseColor: string): StateRule[] {
+export function defaultRules(dev: ImportDevice, primary: string, baseColor: string): StateRule[] {
   const rules: StateRule[] = [
     { id: ruleId(), entityId: primary, mode: 'stringMatch', match: 'unavailable', color: '#64748b' },
   ];
@@ -109,9 +122,19 @@ export function defaultRules(dev: RamsesDevice, primary: string, baseColor: stri
   return rules;
 }
 
-export function buildMarker(dev: RamsesDevice, x: number, y: number, opts: ImportOptions): Marker {
+/** Bind a plugin preset to a device: literal entityId wins, else role lookup. */
+export function resolvePreset(dev: ImportDevice, preset: StateRulePreset): StateRule | null {
+  const { entityRole, entityId, ...rest } = preset;
+  const bound =
+    entityId ??
+    (entityRole ? dev.entities.find((e) => e.role === entityRole)?.entity_id : undefined);
+  if (!bound) return null;
+  return { ...rest, id: ruleId(), entityId: bound };
+}
+
+export function buildMarker(dev: ImportDevice, x: number, y: number, opts: ImportOptions): Marker {
   const primary = dev.primary_entity!;
-  const color = GROUP_COLOR[dev.group] ?? GROUP_COLOR.orphan;
+  const color = dev.color ?? dev.style?.color ?? opts.markerDefaults?.color ?? FALLBACK_COLOR;
   const extras = opts.extraEntities
     ? dev.entities
         .filter((e) => e.entity_id !== primary && EXTRA_ROLES.includes(e.role) && e.domain !== 'number')
@@ -119,27 +142,33 @@ export function buildMarker(dev: RamsesDevice, x: number, y: number, opts: Impor
         .map((e) => e.entity_id)
     : [];
   const primaryDomain = primary.split('.')[0];
+  const presetRules = (opts.presets ?? [])
+    .map((p) => resolvePreset(dev, p))
+    .filter((r): r is StateRule => r !== null);
+  const defaults = opts.markerDefaults ?? {};
   return {
     id: nanoid(8),
     x: Math.round(x * 10) / 10,
     y: Math.round(y * 10) / 10,
     entities: [primary, ...extras],
     style: {
-      type: 'icon',
-      icon: iconForClass(dev.device_class),
+      ...defaults,
+      ...dev.style,
+      type: dev.style?.type ?? defaults.type ?? 'icon',
+      icon: dev.icon ?? dev.style?.icon ?? opts.iconMap?.[dev.device_class] ?? defaults.icon ?? FALLBACK_ICON,
       color,
       size: opts.markerSize,
-      showState: primaryDomain === 'sensor',
+      showState: dev.style?.showState ?? defaults.showState ?? primaryDomain === 'sensor',
       ...(opts.labels ? { label: dev.display_name } : {}),
     },
-    stateRules: opts.stateRules ? defaultRules(dev, primary, color) : [],
-    actions: { tap: { kind: 'more-info' }, hold: { kind: 'none' }, double: { kind: 'none' } },
-    visibility: null,
+    stateRules: opts.stateRules ? [...defaultRules(dev, primary, color), ...presetRules] : presetRules,
+    actions: { tap: { kind: 'more-info' }, hold: { kind: 'none' }, double: { kind: 'none' }, ...dev.actions },
+    visibility: dev.visibility ?? null,
   };
 }
 
 /** Floor whose name matches the HA floor of the device's area (for staging). */
-function floorForArea(project: Project, topo: RamsesTopology, dev: RamsesDevice): Floor | undefined {
+function floorForArea(project: Project, topo: DeviceTopology, dev: ImportDevice): Floor | undefined {
   const floorId = dev.area_id ? topo.areas[dev.area_id]?.floor_id : null;
   const haFloor = floorId ? topo.floors[floorId]?.name ?? floorId : null;
   if (!haFloor) return undefined;
@@ -150,9 +179,9 @@ function floorForArea(project: Project, topo: RamsesTopology, dev: RamsesDevice)
 export const markerSpacing = (opts: Pick<ImportOptions, 'markerSize' | 'labels'>): number =>
   opts.labels ? Math.max(opts.markerSize * 2.5, 72) : Math.max(opts.markerSize * 1.5, 24);
 
-export function planRamsesImport(
+export function planDeviceImport(
   project: Project,
-  topo: RamsesTopology,
+  topo: DeviceTopology,
   activeFloorId: string,
   opts: ImportOptions,
 ): ImportPlan {
@@ -223,8 +252,8 @@ export function applyPlan(draft: Project, plan: ImportPlan): string[] {
   return ids;
 }
 
-/** Devices ticked by default: has entities, not on the plan yet, not the gateway. */
-export function defaultSelection(project: Project, topo: RamsesTopology): Set<string> {
+/** Devices ticked by default: has entities, not on the plan yet, provider-suggested. */
+export function defaultSelection(project: Project, topo: DeviceTopology): Set<string> {
   const placed = placedEntities(project);
   return new Set(
     topo.devices
@@ -232,7 +261,7 @@ export function defaultSelection(project: Project, topo: RamsesTopology): Set<st
         (d) =>
           d.primary_entity &&
           d.entities.length > 0 &&
-          d.group !== 'hgi' &&
+          d.suggested !== false &&
           !d.entities.some((e) => placed.has(e.entity_id)),
       )
       .map((d) => d.device_id),
@@ -240,7 +269,7 @@ export function defaultSelection(project: Project, topo: RamsesTopology): Set<st
 }
 
 // ---------------------------------------------------------------------------
-// Merging a seeded studio project (Ramses Extras floorplan_seed_studio)
+// Merging an incoming project fragment (e.g. an integration's seed response)
 // ---------------------------------------------------------------------------
 
 export interface MergeFloor {
@@ -255,7 +284,7 @@ export interface MergeFloor {
 
 /**
  * Merge markers (and rooms the target floor doesn't have yet) from a project
- * produced elsewhere — typically Ramses Extras' floorplan_seed_studio — into
+ * produced elsewhere — typically an integration's seed response — into
  * the current project. Floors pair by name; a single-floor source always
  * lands on the active floor. Coordinates are scaled when canvas sizes differ.
  */
@@ -324,3 +353,94 @@ export function applyMerge(draft: Project, merge: MergeFloor[]): string[] {
   }
   return ids;
 }
+
+// ---------------------------------------------------------------------------
+// Room-geometry merge (from `provides.roomSources`)
+// ---------------------------------------------------------------------------
+
+export interface RoomMergeFloor {
+  targetFloorId: string;
+  targetFloorName: string;
+  sourceFloorName: string;
+  rooms: Room[];
+  skipped: number;
+  scaled: boolean;
+}
+
+/**
+ * Plan merging room polygons from a `RoomSourceResult` into the target project.
+ * Rooms already present on the destination floor (matched by slugified name or
+ * `areaId`) are skipped so user-drawn/edited rooms are never overwritten.
+ */
+export function planRoomSourceMerge(
+  target: Project,
+  sourceFloors: ImportedFloorRooms[],
+  activeFloorId: string,
+): RoomMergeFloor[] {
+  const active = target.floors.find((f) => f.id === activeFloorId) ?? target.floors[0];
+  const out: RoomMergeFloor[] = [];
+
+  for (const src of sourceFloors ?? []) {
+    const dst =
+      (sourceFloors.length === 1 ? active : target.floors.find((f) => slug(f.name) === slug(src.name))) ?? active;
+    const sw = src.canvas?.width || dst.canvas.width;
+    const sh = src.canvas?.height || dst.canvas.height;
+    const kx = dst.canvas.width / sw;
+    const ky = dst.canvas.height / sh;
+    const scaled = Math.abs(kx - 1) > 0.001 || Math.abs(ky - 1) > 0.001;
+    const tp = (p: Point): Point => ({ x: Math.round(p.x * kx * 10) / 10, y: Math.round(p.y * ky * 10) / 10 });
+
+    const haveNames = new Set(dst.rooms.map((r) => slug(r.name)).filter(Boolean));
+    const haveAreas = new Set(dst.rooms.map((r) => slug(r.areaId)).filter(Boolean));
+    let skipped = 0;
+    const rooms: Room[] = [];
+
+    for (const r of src.rooms ?? []) {
+      if (!r.polygon || r.polygon.length < 3) {
+        skipped++;
+        continue;
+      }
+      const nameKey = slug(r.name);
+      const areaKey = slug(r.areaId);
+      if ((nameKey && haveNames.has(nameKey)) || (areaKey && haveAreas.has(areaKey))) {
+        skipped++;
+        continue;
+      }
+      if (nameKey) haveNames.add(nameKey);
+      if (areaKey) haveAreas.add(areaKey);
+      const room = createRoom(r.polygon.map(tp), r.name || r.areaId || 'Room');
+      if (r.areaId) room.areaId = r.areaId;
+      if (r.fill) room.fill = r.fill;
+      if (typeof r.opacity === 'number') room.opacity = r.opacity;
+      rooms.push(room);
+    }
+
+    const existing = out.find((o) => o.targetFloorId === dst.id);
+    if (existing) {
+      existing.rooms.push(...rooms);
+      existing.skipped += skipped;
+    } else {
+      out.push({
+        targetFloorId: dst.id,
+        targetFloorName: dst.name,
+        sourceFloorName: src.name,
+        rooms,
+        skipped,
+        scaled,
+      });
+    }
+  }
+  return out;
+}
+
+export function applyRoomSourceMerge(draft: Project, merge: RoomMergeFloor[]): string[] {
+  const ids: string[] = [];
+  for (const m of merge) {
+    const floor = draft.floors.find((f) => f.id === m.targetFloorId);
+    if (!floor) continue;
+    floor.rooms.push(...m.rooms);
+    ids.push(...m.rooms.map((r) => r.id));
+  }
+  return ids;
+}
+

@@ -4,7 +4,7 @@ import { useStore } from '../state/store';
 import { Modal } from '../ui/Modal';
 import { deleteProject, listProjects, saveProject } from './db';
 
-export function ProjectsModal({ onClose }: { onClose: () => void }) {
+export function ProjectsModal({ onClose, onImportCard }: { onClose: () => void; onImportCard?: () => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const current = useStore((s) => s.project);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,6 +53,11 @@ export function ProjectsModal({ onClose }: { onClose: () => void }) {
         <button className="fp-primary" onClick={() => { useStore.getState().newProject(); onClose(); }}>
           + New project
         </button>
+        {onImportCard && (
+          <button onClick={onImportCard} title="Create a project from an ha-floorplan / picture-elements card already in Home Assistant">
+            New from HA card…
+          </button>
+        )}
         <button onClick={exportJson}>Export current as JSON</button>
         <button onClick={() => fileRef.current?.click()}>Import JSON…</button>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => importJson(e.target.files?.[0])} />

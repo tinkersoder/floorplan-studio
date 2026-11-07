@@ -4,6 +4,7 @@ import { loadImageFile } from './ui/imageLoad';
 import { useKeyboard } from './ui/useKeyboard';
 import { Toolbar } from './panels/Toolbar';
 import { EntityBrowser } from './panels/EntityBrowser';
+import { DevicePanel } from './panels/DevicePanel';
 import { Inspector } from './panels/Inspector';
 import { LayerPanel } from './panels/LayerPanel';
 import { CanvasSvg } from './canvas/CanvasSvg';
@@ -11,16 +12,27 @@ import { HelpModal } from './ui/HelpModal';
 import { ConnectModal } from './ha/ConnectModal';
 import { ProjectsModal } from './persist/ProjectsModal';
 import { ExportModal } from './export/ExportModal';
-import { RamsesImportModal } from './ramses/RamsesImportModal';
+import { DeviceImportModal } from './import/DeviceImportModal';
 import { HaImportModal } from './haimport/HaImportModal';
 import { useAutosave } from './persist/useAutosave';
 import { subscribeHass, hassToSource, getHass, HassLike } from './ha/hassBridge';
 
-type ModalId = null | 'help' | 'connect' | 'projects' | 'export' | 'ramses' | 'haimport';
+type ModalId = null | 'help' | 'connect' | 'projects' | 'export' | 'import' | 'haimport';
+
+function LeftTab({ id, label }: { id: 'entities' | 'devices' | 'layers'; label: string }) {
+  const active = useStore((s) => s.leftTab === id);
+  const setLeftTab = useStore((s) => s.setLeftTab);
+  return (
+    <button className={active ? 'active' : ''} onClick={() => setLeftTab(id)}>
+      {label}
+    </button>
+  );
+}
 
 export default function App() {
   const [modal, setModal] = useState<ModalId>(null);
   const mode = useStore((s) => s.mode);
+  const leftTab = useStore((s) => s.leftTab);
   useKeyboard();
   useAutosave();
 
@@ -99,15 +111,20 @@ export default function App() {
         onOpenExport={() => setModal('export')}
         onOpenProjects={() => setModal('projects')}
         onOpenConnect={() => setModal('connect')}
-        onOpenRamses={() => setModal('ramses')}
-        onOpenHaImport={() => setModal('haimport')}
+        onOpenImport={() => useStore.getState().setLeftTab('devices')}
         onOpenHelp={() => setModal('help')}
       />
       <div className="fp-body">
         {mode === 'edit' && (
           <aside className="fp-left">
-            <EntityBrowser />
-            <LayerPanel />
+            <div className="fp-left-tabs">
+              <LeftTab id="entities" label="Entities" />
+              <LeftTab id="devices" label="Devices" />
+              <LeftTab id="layers" label="Layers" />
+            </div>
+            {leftTab === 'entities' && <EntityBrowser />}
+            {leftTab === 'devices' && <DevicePanel onOpenImport={() => setModal('import')} />}
+            {leftTab === 'layers' && <LayerPanel />}
           </aside>
         )}
         <main className="fp-center">
@@ -123,9 +140,11 @@ export default function App() {
 
       {modal === 'help' && <HelpModal onClose={() => setModal(null)} />}
       {modal === 'connect' && <ConnectModal onClose={() => setModal(null)} />}
-      {modal === 'projects' && <ProjectsModal onClose={() => setModal(null)} />}
+      {modal === 'projects' && (
+        <ProjectsModal onClose={() => setModal(null)} onImportCard={() => setModal('haimport')} />
+      )}
       {modal === 'export' && <ExportModal onClose={() => setModal(null)} />}
-      {modal === 'ramses' && <RamsesImportModal onClose={() => setModal(null)} />}
+      {modal === 'import' && <DeviceImportModal onClose={() => setModal(null)} />}
       {modal === 'haimport' && <HaImportModal onClose={() => setModal(null)} />}
     </div>
   );
