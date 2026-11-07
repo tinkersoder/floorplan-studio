@@ -13,11 +13,19 @@ import {
   getDeviceSources,
   getIconMap,
   getMarkerDefaults,
+  getRoomSources,
   getStateRulePresets,
   subscribePlugins,
 } from '../plugins/registry';
-import type { DeviceSourceProvider, DeviceTopology } from '../plugins/types';
-import { applyPlan, defaultSelection, planDeviceImport, RowStatus } from '../import/plan';
+import type { DeviceSourceProvider, DeviceTopology, ImportedFloorRooms } from '../plugins/types';
+import {
+  applyPlan,
+  applyRoomSourceMerge,
+  defaultSelection,
+  planDeviceImport,
+  planRoomSourceMerge,
+  RowStatus,
+} from '../import/plan';
 
 const FALLBACK_COLOR = '#ffc107';
 
@@ -50,10 +58,20 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [extraEntities, setExtraEntities] = useState(true);
   const [stateRules, setStateRules] = useState(true);
   const [allFloors, setAllFloors] = useState(true);
+  const [importRooms, setImportRooms] = useState(false);
+  const [roomFloors, setRoomFloors] = useState<ImportedFloorRooms[] | null>(null);
 
   const ctx = useMemo(() => ({ entities, usingDemo }), [entities, usingDemo]);
   const active: { pluginId: string; source: DeviceSourceProvider } | undefined =
     sources.find((s) => `${s.pluginId}:${s.source.id}` === sourceKey) ?? sources[0];
+  const roomSource = useMemo(() => {
+    if (!active) return undefined;
+    const all = getRoomSources();
+    return (
+      all.find((r) => r.pluginId === active.pluginId && r.source.deviceSourceId === active.source.id) ??
+      all.find((r) => r.pluginId === active.pluginId)
+    );
+  }, [active]);
 
   async function fetchSource(src?: DeviceSourceProvider) {
     const s = src ?? active?.source;
@@ -61,8 +79,12 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
     setBusy(true);
     setMsg(null);
     try {
-      const { topology, note } = await s.fetch(call, ctx);
+      const [{ topology, note }, roomsRes] = await Promise.all([
+        s.fetch(call, ctx),
+        roomSource?.source.fetch ? roomSource.source.fetch(call, ctx).catch(() => null) : Promise.resolve(null),
+      ]);
       setTopo(topology);
+      setRoomFloors(roomsRes?.floors ?? null);
       setSelected(defaultSelection(useStore.getState().project, topology));
       setMsg({
         kind: 'info',
@@ -70,6 +92,7 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
       });
     } catch (e) {
       setTopo(null);
+      setRoomFloors(null);
       setMsg({ kind: 'err', text: (e as Error).message || String(e) });
     } finally {
       setBusy(false);
@@ -82,10 +105,32 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceKey, call]);
 
+  const roomMerge = useMemo(
+    () =>
+      importRooms && roomFloors
+        ? planRoomSourceMerge(project, roomFloors, project.activeFloorId)
+        : null,
+    [project, importRooms, roomFloors],
+  );
+  const newRoomCount = useMemo(
+    () => (roomMerge ? roomMerge.reduce((n, m) => n + m.rooms.length, 0) : 0),
+    [roomMerge],
+  );
+
+  // When `importRooms` is ticked, plan device placement against a virtual
+  // project that already contains the incoming rooms so room-match badges
+  // and centroid positions reflect the merged geometry immediately.
+  const effectiveProject = useMemo(() => {
+    if (!roomMerge || newRoomCount === 0) return project;
+    const clone = structuredClone(project);
+    applyRoomSourceMerge(clone, roomMerge);
+    return clone;
+  }, [project, roomMerge, newRoomCount]);
+
   const plan = useMemo(
     () =>
       topo
-        ? planDeviceImport(project, topo, project.activeFloorId, {
+        ? planDeviceImport(effectiveProject, topo, effectiveProject.activeFloorId, {
             selected,
             markerSize,
             labels,
@@ -97,7 +142,7 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
             presets: getStateRulePresets().map((p) => p.preset),
           })
         : null,
-    [project, topo, selected, markerSize, labels, extraEntities, stateRules, allFloors],
+    [effectiveProject, topo, selected, markerSize, labels, extraEntities, stateRules, allFloors],
   );
 
   const counts = useMemo(() => {
@@ -135,15 +180,19 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
   }
 
   function place() {
-    if (!plan || plan.adds.length === 0) return;
+    if (!plan || (plan.adds.length === 0 && newRoomCount === 0)) return;
     let ids: string[] = [];
+    let roomIds: string[] = [];
     useStore.getState().commit((p) => {
+      if (roomMerge && newRoomCount > 0) roomIds = applyRoomSourceMerge(p, roomMerge);
       ids = applyPlan(p, plan);
     });
     const st = useStore.getState();
-    st.select(ids);
+    st.select(ids.length ? ids : roomIds);
     st.setTool('select');
-    const parts = [`Added ${ids.length} marker${ids.length === 1 ? '' : 's'}`];
+    const parts: string[] = [];
+    if (roomIds.length) parts.push(`Imported ${roomIds.length} room${roomIds.length === 1 ? '' : 's'}`);
+    if (ids.length) parts.push(`Added ${ids.length} marker${ids.length === 1 ? '' : 's'}`);
     if (counts.room) parts.push(`${counts.room} in matching rooms`);
     if (counts.staging) parts.push(`${counts.staging} staged at the bottom edge`);
     setMsg({ kind: 'ok', text: parts.join(' · ') + '. Ctrl+Z undoes it.' });
@@ -151,6 +200,7 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
 
   const iconMap = getIconMap();
   const addCount = plan?.adds.length ?? 0;
+  const canPlace = addCount > 0 || newRoomCount > 0;
 
   return (
     <div className="fp-panel fp-devices">
@@ -234,6 +284,17 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
             })}
           </div>
 
+          {roomSource && (
+            <label className="fp-check" title={roomSource.source.description ?? roomSource.source.title}>
+              <input
+                type="checkbox"
+                checked={importRooms}
+                onChange={(e) => setImportRooms(e.target.checked)}
+              />
+              Also import rooms from source{roomFloors ? ` (${newRoomCount} new)` : ''}
+            </label>
+          )}
+
           <details className="fp-dev-opts">
             <summary>Options</summary>
             <label className="fp-check">
@@ -266,8 +327,12 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
           </details>
 
           <div className="fp-rx-row fp-dev-footer">
-            <button className="fp-primary" disabled={!addCount} onClick={place}>
-              Place {addCount} marker{addCount === 1 ? '' : 's'}
+            <button className="fp-primary" disabled={!canPlace} onClick={place}>
+              {newRoomCount > 0 && addCount > 0
+                ? `Import ${newRoomCount} room${newRoomCount === 1 ? '' : 's'} & place ${addCount}`
+                : newRoomCount > 0
+                  ? `Import ${newRoomCount} room${newRoomCount === 1 ? '' : 's'}`
+                  : `Place ${addCount} marker${addCount === 1 ? '' : 's'}`}
             </button>
             <span className="fp-rx-summary">
               {counts.room} in rooms · {counts.staging} staged · {counts.exists} placed

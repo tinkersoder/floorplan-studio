@@ -13,7 +13,8 @@
 import { nanoid } from 'nanoid';
 import { centroid } from '../canvas/geometry';
 import type { Floor, Marker, MarkerStyle, Point, Project, Room, StateRule } from '../model/schema';
-import type { DeviceTopology, ImportDevice, StateRulePreset } from '../plugins/types';
+import { createRoom } from '../model/defaults';
+import type { DeviceTopology, ImportDevice, ImportedFloorRooms, StateRulePreset } from '../plugins/types';
 
 export interface ImportOptions {
   /** device ids the user ticked */
@@ -352,3 +353,94 @@ export function applyMerge(draft: Project, merge: MergeFloor[]): string[] {
   }
   return ids;
 }
+
+// ---------------------------------------------------------------------------
+// Room-geometry merge (from `provides.roomSources`)
+// ---------------------------------------------------------------------------
+
+export interface RoomMergeFloor {
+  targetFloorId: string;
+  targetFloorName: string;
+  sourceFloorName: string;
+  rooms: Room[];
+  skipped: number;
+  scaled: boolean;
+}
+
+/**
+ * Plan merging room polygons from a `RoomSourceResult` into the target project.
+ * Rooms already present on the destination floor (matched by slugified name or
+ * `areaId`) are skipped so user-drawn/edited rooms are never overwritten.
+ */
+export function planRoomSourceMerge(
+  target: Project,
+  sourceFloors: ImportedFloorRooms[],
+  activeFloorId: string,
+): RoomMergeFloor[] {
+  const active = target.floors.find((f) => f.id === activeFloorId) ?? target.floors[0];
+  const out: RoomMergeFloor[] = [];
+
+  for (const src of sourceFloors ?? []) {
+    const dst =
+      (sourceFloors.length === 1 ? active : target.floors.find((f) => slug(f.name) === slug(src.name))) ?? active;
+    const sw = src.canvas?.width || dst.canvas.width;
+    const sh = src.canvas?.height || dst.canvas.height;
+    const kx = dst.canvas.width / sw;
+    const ky = dst.canvas.height / sh;
+    const scaled = Math.abs(kx - 1) > 0.001 || Math.abs(ky - 1) > 0.001;
+    const tp = (p: Point): Point => ({ x: Math.round(p.x * kx * 10) / 10, y: Math.round(p.y * ky * 10) / 10 });
+
+    const haveNames = new Set(dst.rooms.map((r) => slug(r.name)).filter(Boolean));
+    const haveAreas = new Set(dst.rooms.map((r) => slug(r.areaId)).filter(Boolean));
+    let skipped = 0;
+    const rooms: Room[] = [];
+
+    for (const r of src.rooms ?? []) {
+      if (!r.polygon || r.polygon.length < 3) {
+        skipped++;
+        continue;
+      }
+      const nameKey = slug(r.name);
+      const areaKey = slug(r.areaId);
+      if ((nameKey && haveNames.has(nameKey)) || (areaKey && haveAreas.has(areaKey))) {
+        skipped++;
+        continue;
+      }
+      if (nameKey) haveNames.add(nameKey);
+      if (areaKey) haveAreas.add(areaKey);
+      const room = createRoom(r.polygon.map(tp), r.name || r.areaId || 'Room');
+      if (r.areaId) room.areaId = r.areaId;
+      if (r.fill) room.fill = r.fill;
+      if (typeof r.opacity === 'number') room.opacity = r.opacity;
+      rooms.push(room);
+    }
+
+    const existing = out.find((o) => o.targetFloorId === dst.id);
+    if (existing) {
+      existing.rooms.push(...rooms);
+      existing.skipped += skipped;
+    } else {
+      out.push({
+        targetFloorId: dst.id,
+        targetFloorName: dst.name,
+        sourceFloorName: src.name,
+        rooms,
+        skipped,
+        scaled,
+      });
+    }
+  }
+  return out;
+}
+
+export function applyRoomSourceMerge(draft: Project, merge: RoomMergeFloor[]): string[] {
+  const ids: string[] = [];
+  for (const m of merge) {
+    const floor = draft.floors.find((f) => f.id === m.targetFloorId);
+    if (!floor) continue;
+    floor.rooms.push(...m.rooms);
+    ids.push(...m.rooms.map((r) => r.id));
+  }
+  return ids;
+}
+

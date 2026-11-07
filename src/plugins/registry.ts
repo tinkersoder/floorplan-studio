@@ -13,6 +13,7 @@ import {
   PluginProvides,
   StateRulePreset,
   DeviceSourceProvider,
+  RoomSourceProvider,
 } from './types';
 
 interface RegisteredPlugin {
@@ -101,6 +102,14 @@ export function getDeviceSources(): { pluginId: string; source: DeviceSourceProv
   const byId = new Map<string, { pluginId: string; source: DeviceSourceProvider }>();
   for (const [pluginId, p] of plugins)
     for (const s of p.provides.deviceSources ?? []) byId.set(s.id, { pluginId, source: s });
+  return [...byId.values()];
+}
+
+/** All room-geometry sources; duplicate source ids: last registered plugin wins. */
+export function getRoomSources(): { pluginId: string; source: RoomSourceProvider }[] {
+  const byId = new Map<string, { pluginId: string; source: RoomSourceProvider }>();
+  for (const [pluginId, p] of plugins)
+    for (const s of p.provides.roomSources ?? []) byId.set(s.id, { pluginId, source: s });
   return [...byId.values()];
 }
 

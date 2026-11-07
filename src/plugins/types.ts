@@ -11,7 +11,7 @@
 // integration needs today and leaves room for decoration/interaction slots
 // later — unknown keys in `provides` are the versioning mechanism.
 
-import type { ActionSet, Marker, MarkerStyle, Project, StateRule } from '../model/schema';
+import type { ActionSet, Marker, MarkerStyle, Point, Project, StateRule } from '../model/schema';
 import type { HaEntity } from '../model/entities';
 
 export const PLUGIN_API_VERSION = 1;
@@ -109,6 +109,41 @@ export interface DeviceSourceProvider {
 }
 
 // ---------------------------------------------------------------------------
+// Room-geometry sources — integrations return floor/room polygons only;
+// the editor merges those rooms into the project and runs its single
+// client-side placement planner (`planDeviceImport`) over them.
+// ---------------------------------------------------------------------------
+
+export interface ImportedRoom {
+  name: string;
+  /** optional HA area id mapping used by roomMatchesDevice */
+  areaId?: string | null;
+  polygon: Point[];
+  fill?: string;
+  opacity?: number;
+}
+
+export interface ImportedFloorRooms {
+  name: string;
+  canvas?: { width: number; height: number };
+  rooms: ImportedRoom[];
+}
+
+export interface RoomSourceResult {
+  floors: ImportedFloorRooms[];
+  note?: string;
+}
+
+export interface RoomSourceProvider {
+  id: string;
+  title: string;
+  description?: string;
+  /** optional deviceSource id this room source accompanies in the Devices panel */
+  deviceSourceId?: string;
+  fetch: (ws: WsCall, ctx: SourceContext) => Promise<RoomSourceResult>;
+}
+
+// ---------------------------------------------------------------------------
 // Other capability slots
 // ---------------------------------------------------------------------------
 
@@ -139,6 +174,7 @@ export type StateRulePreset = Omit<StateRule, 'id' | 'entityId'> & {
 
 export interface PluginProvides {
   deviceSources?: DeviceSourceProvider[];
+  roomSources?: RoomSourceProvider[];
   actions?: PluginAction[];
   /** free-form class token → MDI icon, for sources that don't set icon */
   iconMap?: Record<string, string>;

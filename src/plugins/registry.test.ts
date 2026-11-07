@@ -6,11 +6,14 @@ import {
   getIconMap,
   getMarkerDefaults,
   getPlugins,
+  getRoomSources,
   getStateRulePresets,
   registerPlugin,
   unregisterPlugin,
 } from './registry';
 import { EVENT_ACTION } from './types';
+import { createProject } from '../model/defaults';
+import { applyRoomSourceMerge, planRoomSourceMerge } from '../import/plan';
 
 // Tests run against a shared module registry — reset by unregistering.
 function reset() {
@@ -26,6 +29,7 @@ describe('plugin registry', () => {
       apiVersion: 1,
       provides: {
         deviceSources: [{ id: 'demo', title: 'Demo source' }],
+        roomSources: [{ id: 'demo-rooms', title: 'Demo rooms', fetch: async () => ({ floors: [] }) }],
         actions: [{ id: 'demo.act', label: 'Do it', location: 'toolbar' }],
         iconMap: { FAN: 'fan' },
         markerDefaults: { size: 40 },
@@ -37,6 +41,8 @@ describe('plugin registry', () => {
     expect(getPlugins().map((p) => p.id)).toEqual(['demo']);
     expect(getDeviceSources()).toHaveLength(1);
     expect(getDeviceSources()[0].source.title).toBe('Demo source');
+    expect(getRoomSources()).toHaveLength(1);
+    expect(getRoomSources()[0].source.title).toBe('Demo rooms');
     expect(getActions('toolbar')).toHaveLength(1);
     expect(getIconMap()).toEqual({ FAN: 'fan' });
     expect(getMarkerDefaults()).toEqual({ size: 40 });
@@ -81,5 +87,38 @@ describe('plugin registry', () => {
     } finally {
       (globalThis as { window?: unknown }).window = prev;
     }
+  });
+
+  it('merges room geometry from roomSources without overwriting existing rooms', () => {
+    const proj = createProject('Test');
+    const floor = proj.floors[0];
+    const incoming = [
+      {
+        name: floor.name,
+        canvas: { width: floor.canvas.width, height: floor.canvas.height },
+        rooms: [
+          {
+            name: 'Living Room',
+            areaId: 'living_room',
+            polygon: [
+              { x: 10, y: 10 },
+              { x: 200, y: 10 },
+              { x: 200, y: 150 },
+            ],
+          },
+        ],
+      },
+    ];
+    const merge1 = planRoomSourceMerge(proj, incoming, floor.id);
+    expect(merge1[0].rooms).toHaveLength(1);
+    expect(merge1[0].rooms[0].areaId).toBe('living_room');
+    const ids = applyRoomSourceMerge(proj, merge1);
+    expect(ids).toHaveLength(1);
+    expect(proj.floors[0].rooms).toHaveLength(1);
+
+    // Re-running skips already-present rooms by name/areaId
+    const merge2 = planRoomSourceMerge(proj, incoming, floor.id);
+    expect(merge2[0].rooms).toHaveLength(0);
+    expect(merge2[0].skipped).toBe(1);
   });
 });
