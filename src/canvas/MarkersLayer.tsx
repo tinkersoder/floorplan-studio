@@ -6,6 +6,7 @@ import {
   markerIcon,
   markerVisible,
   ruleAnimation,
+  ruleSpinDuration,
   stateLabel,
 } from '../state/resolve';
 import { iconPath } from '../ui/icons';
@@ -57,6 +58,7 @@ function MarkerNode({
   const color = preview ? markerColor(m, states) : m.style.color;
   const icon = preview ? markerIcon(m, states) : m.style.icon;
   const anim = preview ? ruleAnimation(m.stateRules, states, m.entities[0]) : null;
+  const spinDur = preview && anim === 'spin' ? ruleSpinDuration(m.stateRules, states, m.entities[0]) : undefined;
   const size = m.style.size;
 
   function onPointerDown(e: React.PointerEvent) {
@@ -130,7 +132,7 @@ function MarkerNode({
       onPointerUp={gesture?.onPointerUp ?? onPointerUp}
       onClick={gesture?.onClick}
       onDoubleClick={gesture?.onDoubleClick}
-      className={anim ? `fp-anim-${anim}` : undefined}
+      className={anim && anim !== 'spin' ? `fp-anim-${anim}` : undefined}
     >
       {/* selection ring */}
       {selected && mode === 'edit' && (
@@ -142,11 +144,16 @@ function MarkerNode({
       {m.style.type === 'icon' && (
         <>
           <circle r={size * 0.5} fill="rgba(20,24,33,0.55)" />
-          <path
-            d={iconPath(icon)}
-            fill={color}
-            transform={`translate(${-size * 0.35} ${-size * 0.35}) scale(${(size * 0.7) / 24})`}
-          />
+          <g
+            className={anim === 'spin' ? 'fp-anim-spin' : undefined}
+            style={spinDur ? ({ '--fp-spin-duration': spinDur } as React.CSSProperties) : undefined}
+          >
+            <path
+              d={iconPath(icon)}
+              fill={color}
+              transform={`translate(${-size * 0.35} ${-size * 0.35}) scale(${(size * 0.7) / 24})`}
+            />
+          </g>
         </>
       )}
 

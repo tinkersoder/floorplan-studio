@@ -102,6 +102,10 @@ export interface DeviceSourceProvider {
   title: string;
   /** one-line hint shown under its button */
   description?: string;
+  /** HA integration domain(s) this source provides rich device mapping for
+   *  (e.g. `['ramses_cc', 'ramses_extras']`). Used by the Devices panel's
+   *  integration coverage map to badge covered integrations. */
+  coversIntegrations?: string[];
   /** live fetch over the active HA WebSocket. Throw with a readable message. */
   fetch?: (ws: WsCall, ctx: SourceContext) => Promise<FetchResult>;
   /** offline paste/file sniffing; return nomatch when the text isn't yours */

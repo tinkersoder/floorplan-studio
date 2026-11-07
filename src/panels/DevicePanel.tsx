@@ -10,6 +10,7 @@ import { useStore } from '../state/store';
 import { iconPath } from '../ui/icons';
 import { liveWsCaller } from '../ha/wsCaller';
 import {
+  getCoveredIntegrations,
   getDeviceSources,
   getIconMap,
   getMarkerDefaults,
@@ -18,6 +19,7 @@ import {
   subscribePlugins,
 } from '../plugins/registry';
 import type { DeviceSourceProvider, DeviceTopology, ImportedFloorRooms } from '../plugins/types';
+import { fetchHaDevices } from '../examples/ha-devices';
 import {
   applyPlan,
   applyRoomSourceMerge,
@@ -60,10 +62,13 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [allFloors, setAllFloors] = useState(true);
   const [importRooms, setImportRooms] = useState(false);
   const [roomFloors, setRoomFloors] = useState<ImportedFloorRooms[] | null>(null);
+  const [registryCounts, setRegistryCounts] = useState<Map<string, number>>(new Map());
+  const [pendingGroupFilter, setPendingGroupFilter] = useState<string | null>(null);
 
   const ctx = useMemo(() => ({ entities, usingDemo }), [entities, usingDemo]);
   const active: { pluginId: string; source: DeviceSourceProvider } | undefined =
     sources.find((s) => `${s.pluginId}:${s.source.id}` === sourceKey) ?? sources[0];
+  const coveredIntegrations = getCoveredIntegrations();
   const roomSource = useMemo(() => {
     if (!active) return undefined;
     const all = getRoomSources();
@@ -79,13 +84,33 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
     setBusy(true);
     setMsg(null);
     try {
-      const [{ topology, note }, roomsRes] = await Promise.all([
+      const [{ topology, note }, roomsRes, regRes] = await Promise.all([
         s.fetch(call, ctx),
         roomSource?.source.fetch ? roomSource.source.fetch(call, ctx).catch(() => null) : Promise.resolve(null),
+        registryCounts.size === 0 ? fetchHaDevices(call).catch(() => null) : Promise.resolve(null),
       ]);
+      if (regRes) {
+        const counts = new Map<string, number>();
+        for (const d of regRes.topology.devices) {
+          const g = d.group || 'unknown';
+          counts.set(g, (counts.get(g) ?? 0) + 1);
+        }
+        setRegistryCounts(counts);
+      }
       setTopo(topology);
       setRoomFloors(roomsRes?.floors ?? null);
-      setSelected(defaultSelection(useStore.getState().project, topology));
+      if (pendingGroupFilter) {
+        setSelected(
+          new Set(
+            topology.devices
+              .filter((d) => d.primary_entity && d.entities.length && d.group === pendingGroupFilter)
+              .map((d) => d.device_id),
+          ),
+        );
+        setPendingGroupFilter(null);
+      } else {
+        setSelected(defaultSelection(useStore.getState().project, topology));
+      }
       setMsg({
         kind: 'info',
         text: `${topology.devices.length} devices from ${topology.sourceLabel ?? topology.source}.${note ? ' ' + note : ''}`,
@@ -239,6 +264,57 @@ export function DevicePanel({ onOpenImport }: { onOpenImport: () => void }) {
       </div>
       {!call && <div className="fp-hint">Connect to Home Assistant to fetch devices.</div>}
       {active?.source.description && <div className="fp-hint">{active.source.description}</div>}
+
+      {registryCounts.size > 0 && (
+        <details className="fp-dev-opts">
+          <summary>Integrations ({registryCounts.size})</summary>
+          <div className="fp-cov-list">
+            {[...registryCounts.entries()]
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([domain, count]) => {
+                const covered = coveredIntegrations.get(domain.toLowerCase());
+                return (
+                  <button
+                    key={domain}
+                    className="fp-cov-row"
+                    onClick={() => {
+                      if (covered) {
+                        const key = `${covered.pluginId}:${covered.source.id}`;
+                        if (key !== `${active?.pluginId}:${active?.source.id}`) {
+                          setSourceKey(key);
+                          setTopo(null);
+                          setMsg(null);
+                        }
+                      } else {
+                        const regKey = 'ha-devices:devices';
+                        if (regKey !== `${active?.pluginId}:${active?.source.id}`) {
+                          setPendingGroupFilter(domain);
+                          setSourceKey(regKey);
+                          setTopo(null);
+                          setMsg(null);
+                        } else {
+                          selectWhere((g) => g === domain);
+                        }
+                      }
+                    }}
+                    title={
+                      covered
+                        ? `Covered by plugin "${covered.pluginId}" (${covered.source.title})`
+                        : 'No dedicated plugin — click to select in HA registry view'
+                    }
+                  >
+                    <span className={`fp-cov-dot ${covered ? 'covered' : ''}`} />
+                    <span>{domain}</span>
+                    <span className="fp-cov-count">{count}</span>
+                    <span className={`fp-rx-status ${covered ? 'room' : ''}`}>
+                      {covered ? 'plugin' : 'registry'}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+        </details>
+      )}
 
       {msg && <div className={`fp-note ${msg.kind === 'info' ? '' : msg.kind}`}>{msg.text}</div>}
 

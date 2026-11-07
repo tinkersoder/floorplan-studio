@@ -105,6 +105,22 @@ export function getDeviceSources(): { pluginId: string; source: DeviceSourceProv
   return [...byId.values()];
 }
 
+/**
+ * Map of HA integration domain -> registered DeviceSourceProvider that covers it
+ * (from `coversIntegrations`, falling back to matching `pluginId` or `source.id`).
+ */
+export function getCoveredIntegrations(): Map<string, { pluginId: string; source: DeviceSourceProvider }> {
+  const out = new Map<string, { pluginId: string; source: DeviceSourceProvider }>();
+  for (const entry of getDeviceSources()) {
+    if (entry.pluginId === 'ha-devices') continue;
+    const domains = entry.source.coversIntegrations?.length
+      ? entry.source.coversIntegrations
+      : [entry.pluginId, entry.source.id];
+    for (const d of domains) if (d) out.set(d.toLowerCase(), entry);
+  }
+  return out;
+}
+
 /** All room-geometry sources; duplicate source ids: last registered plugin wins. */
 export function getRoomSources(): { pluginId: string; source: RoomSourceProvider }[] {
   const byId = new Map<string, { pluginId: string; source: RoomSourceProvider }>();

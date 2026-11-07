@@ -35,7 +35,7 @@ const PRIMARY_DOMAIN_ORDER = [
   'humidifier', 'water_heater', 'sensor', 'binary_sensor', 'number',
 ];
 
-async function fetchHaDevices(call: WsCall): Promise<FetchResult> {
+export async function fetchHaDevices(call: WsCall): Promise<FetchResult> {
   const [devices, entities] = await Promise.all([
     call<HaDevice[]>({ type: 'config/device_registry/list' }),
     call<HaEntityReg[]>({ type: 'config/entity_registry/list' }),

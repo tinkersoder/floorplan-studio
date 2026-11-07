@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { emitAction } from './events';
 import {
   getActions,
+  getCoveredIntegrations,
   getDeviceSources,
   getIconMap,
   getMarkerDefaults,
@@ -14,6 +15,7 @@ import {
 import { EVENT_ACTION } from './types';
 import { createProject } from '../model/defaults';
 import { applyRoomSourceMerge, planRoomSourceMerge } from '../import/plan';
+import { ruleSpinDuration } from '../state/resolve';
 
 // Tests run against a shared module registry — reset by unregistering.
 function reset() {
@@ -120,5 +122,44 @@ describe('plugin registry', () => {
     const merge2 = planRoomSourceMerge(proj, incoming, floor.id);
     expect(merge2[0].rooms).toHaveLength(0);
     expect(merge2[0].skipped).toBe(1);
+  });
+
+  it('tracks covered integrations and speed-proportional spin duration', () => {
+    registerPlugin({
+      id: 'ramses',
+      provides: {
+        deviceSources: [
+          {
+            id: 'ramses',
+            title: 'Ramses',
+            coversIntegrations: ['ramses_cc', 'ramses_extras'],
+          },
+        ],
+      },
+    });
+    const cov = getCoveredIntegrations();
+    expect(cov.get('ramses_cc')?.pluginId).toBe('ramses');
+    expect(cov.get('ramses_extras')?.pluginId).toBe('ramses');
+
+    const rules = [
+      {
+        id: 'r1',
+        entityId: 'sensor.fan_rate',
+        mode: 'threshold' as const,
+        compare: '>' as const,
+        value: 0,
+        color: '#fbbf24',
+        animation: 'spin' as const,
+      },
+    ];
+    const slow = ruleSpinDuration(rules, {
+      'sensor.fan_rate': { entity_id: 'sensor.fan_rate', state: '20', attributes: {} },
+    });
+    const fast = ruleSpinDuration(rules, {
+      'sensor.fan_rate': { entity_id: 'sensor.fan_rate', state: '100', attributes: {} },
+    });
+    expect(slow).toBeDefined();
+    expect(fast).toBeDefined();
+    expect(parseFloat(fast!)).toBeLessThan(parseFloat(slow!));
   });
 });
