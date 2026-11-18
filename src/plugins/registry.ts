@@ -96,12 +96,23 @@ export function subscribePlugins(cb: () => void): () => void {
 // Capability getters (flattened across plugins)
 // ---------------------------------------------------------------------------
 
-/** All device sources; duplicate source ids: last registered plugin wins. */
-export function getDeviceSources(): { pluginId: string; source: DeviceSourceProvider }[] {
-  const byId = new Map<string, { pluginId: string; source: DeviceSourceProvider }>();
+/** Stable key for a device source: source ids are only unique within their plugin. */
+export const deviceSourceKey = (pluginId: string, sourceId: string): string => `${pluginId}:${sourceId}`;
+
+/**
+ * All device sources, namespaced by plugin id — two plugins may both use a
+ * generic source id like "devices" without shadowing each other. A duplicate
+ * id *within* one plugin keeps the last entry. To supersede another plugin's
+ * source, register under that plugin's id.
+ */
+export function getDeviceSources(): { pluginId: string; key: string; source: DeviceSourceProvider }[] {
+  const byKey = new Map<string, { pluginId: string; key: string; source: DeviceSourceProvider }>();
   for (const [pluginId, p] of plugins)
-    for (const s of p.provides.deviceSources ?? []) byId.set(s.id, { pluginId, source: s });
-  return [...byId.values()];
+    for (const s of p.provides.deviceSources ?? []) {
+      const key = deviceSourceKey(pluginId, s.id);
+      byKey.set(key, { pluginId, key, source: s });
+    }
+  return [...byKey.values()];
 }
 
 export function getActions(location?: PluginAction['location']): { pluginId: string; action: PluginAction }[] {

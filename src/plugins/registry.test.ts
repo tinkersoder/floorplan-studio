@@ -50,12 +50,6 @@ describe('plugin registry', () => {
     expect(getActions().map((x) => x.action.id)).toEqual(['b']);
   });
 
-  it('duplicate source ids: last registered plugin wins', () => {
-    registerPlugin({ id: 'p1', provides: { deviceSources: [{ id: 'src', title: 'first' }] } });
-    registerPlugin({ id: 'p2', provides: { deviceSources: [{ id: 'src', title: 'second' }] } });
-    expect(getDeviceSources().map((s) => s.source.title)).toEqual(['second']);
-  });
-
   it('emits floorplan-studio:action with the documented payload', () => {
     // node env: stub the window bits emit() touches
     const listeners = new Map<string, ((e: Event) => void)[]>();
@@ -81,5 +75,19 @@ describe('plugin registry', () => {
     } finally {
       (globalThis as { window?: unknown }).window = prev;
     }
+  });
+
+  it('namespaces device sources by plugin, so generic ids do not collide', () => {
+    registerPlugin({ id: 'a', provides: { deviceSources: [{ id: 'devices', title: 'A devices' }] } });
+    registerPlugin({ id: 'b', provides: { deviceSources: [{ id: 'devices', title: 'B devices' }] } });
+    const srcs = getDeviceSources();
+    expect(srcs.map((s) => s.key).sort()).toEqual(['a:devices', 'b:devices']);
+    expect(srcs.map((s) => s.source.title).sort()).toEqual(['A devices', 'B devices']);
+  });
+
+  it('re-registering the same plugin id still supersedes its sources', () => {
+    registerPlugin({ id: 'a', provides: { deviceSources: [{ id: 'devices', title: 'old' }] } });
+    registerPlugin({ id: 'a', provides: { deviceSources: [{ id: 'devices', title: 'new' }] } });
+    expect(getDeviceSources().map((s) => s.source.title)).toEqual(['new']);
   });
 });

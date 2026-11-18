@@ -74,8 +74,8 @@ export function DeviceImportModal({ onClose }: { onClose: () => void }) {
     });
   }
 
-  async function fetchSource(id: string) {
-    const src = sources.find((s) => s.source.id === id)?.source;
+  async function fetchSource(key: string) {
+    const src = sources.find((s) => s.key === key)?.source;
     if (!src?.fetch || !call) return;
     setBusy(true);
     setMsg(null);
@@ -254,9 +254,9 @@ export function DeviceImportModal({ onClose }: { onClose: () => void }) {
           )}
           {sources
             .filter((s) => s.source.fetch)
-            .map(({ pluginId, source }) => (
-              <div key={`${pluginId}:${source.id}`} style={{ marginBottom: 8 }}>
-                <button className="fp-primary" disabled={!call || busy} onClick={() => fetchSource(source.id)}>
+            .map(({ key, source }) => (
+              <div key={key} style={{ marginBottom: 8 }}>
+                <button className="fp-primary" disabled={!call || busy} onClick={() => fetchSource(key)}>
                   {busy ? 'Reading devices…' : source.title}
                 </button>
                 {source.description && <div className="fp-hint">{source.description}</div>}
