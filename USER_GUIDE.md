@@ -114,7 +114,8 @@ What you get:
 
 The **Devices** toolbar button opens the generic device importer. The sources it lists come from
 integrations registered through the [plugin API](#plugin-api-for-integrations) — Floorplan Studio
-ships a bundled RAMSES RF source described below; other integrations (yours?) can register their own.
+ships a bundled Home Assistant registry source described below; other integrations (yours?) can
+register their own.
 
 1. Draw a room for every space and set its **HA area** in the Inspector (or give the room the same
    name as the HA area). This is how devices find their room.
@@ -123,7 +124,7 @@ ships a bundled RAMSES RF source described below; other integrations (yours?) ca
 3. Or **paste / load** whatever a source recognises offline — the modal tries each registered
    source's parser, and a raw studio project JSON merges without one.
 
-**Bundled source: MQTT** (`src/examples/ha-devices.ts`) — lists every device in the HA registry, grouped by integration
+**Bundled source: Home Assistant devices** (`src/examples/ha-devices.ts`) — lists every device in the HA registry, grouped by integration
 via the HA entity registry. It exists as the **reference implementation** for the plugin
 API, not as an integration play: real integrations ship their own provider as a Lovelace
 resource (see below).
@@ -220,13 +221,17 @@ Floorplan Studio exposes `window.floorplanStudio` so third-party integrations ca
 in this repository. The bundled HA-registry source (`src/examples/ha-devices.ts`) registers through exactly
 this public API and doubles as the reference implementation.
 
+Lovelace resources load in no guaranteed order, so your script may run before Floorplan Studio's.
+Register through the queue — it works either way (items pushed before the editor loads run when it
+does; pushes after that run immediately):
+
 ```ts
-window.floorplanStudio.registerPlugin({
+(window.floorplanStudioQueue ||= []).push({
   id: 'ramses',                 // unique; re-registering replaces (external may supersede bundled)
   apiVersion: 1,
   provides: {
     deviceSources: [{
-      id: 'ramses',
+      id: 'devices',                               // only needs to be unique within your plugin
       title: 'RAMSES RF / Ramses Extras',          // label in the Devices modal
       description: 'evohome / RAMSES-II devices',
       fetch: async (ws, ctx) => ({                 // live: called with the active HA WebSocket
@@ -257,11 +262,17 @@ window.floorplanStudio.registerPlugin({
   presentation hints, `actions`/`style`/`visibility` passthrough (per-gesture overrides, e.g. a
   FAN's double-tap opening a custom card — users can still edit per-marker afterwards), and
   `parent` for topology-aware integrations.
+- **Need the API itself at startup** (to add listeners, call `callWS`…)? Push a function instead of
+  a manifest: `(window.floorplanStudioQueue ||= []).push((api) => { … })`. Calling
+  `window.floorplanStudio.registerPlugin` directly still works, but only once the editor has loaded.
+- **Device source ids are namespaced by plugin id** — `ramses:devices` and `ha-devices:devices`
+  never collide. To supersede another plugin's source, register under that plugin's `id`.
 - **Events** need no registry — just `addEventListener` on `window`:
   - `floorplan-studio:action` — a plugin action was clicked.
     `detail: {pluginId, actionId, projectId, floorId, selection: string[]}`
   - `floorplan-studio:project-imported` — `detail: {pluginId?, mode, markers, rooms}`
   - `floorplan-studio:plugins-changed` — `detail: {plugins: string[]}`
+  - `floorplan-studio:ready` — `detail: {apiVersion}`, once the API is installed and the queue drained
 - **`floorplanStudio.importProject(json, {mode})`** — merge a studio project/fragment into the open
   project in one undo step (`'merge'`, default; floors pair by name, scaled to the canvas) or
   `'replace'` it. This replaces writing to the editor's IndexedDB directly.

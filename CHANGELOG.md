@@ -21,8 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   project fragment in one undo step, `projects.*` (list/get/save/remove/open) replacing direct
   IndexedDB access, `callWS()` for the active HA link, and documented events
   (`floorplan-studio:action`, `floorplan-studio:project-imported`,
-  `floorplan-studio:plugins-changed`). See USER_GUIDE → *Plugin API for integrations*; the bundled
-  RAMSES source registers through the same public API as the reference implementation.
+  `floorplan-studio:plugins-changed`, `floorplan-studio:ready`). Plugins register load-order-safely
+  with `(window.floorplanStudioQueue ||= []).push(manifest)`, since Lovelace resources load in no
+  guaranteed order. Device sources are namespaced by plugin id, so two plugins can both use a
+  generic source id. See USER_GUIDE → *Plugin API for integrations*; the bundled HA-registry
+  source registers through the same public API as the reference implementation.
 - **Import a floorplan card already in Home Assistant** (toolbar → **Import card**): scans every
   Lovelace dashboard over the WebSocket (or takes pasted card / view / dashboard YAML) for
   `custom:floorplan-card` and `picture-elements` cards and imports one as a new project or a new
@@ -33,16 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   area / name; the remaining drawing becomes the background with converted elements stripped.
   Studio's own exports round-trip icons, colours, labels and state rules.
 - Room inspector keeps an imported HA area visible even when it isn't in the entity list.
-- **RAMSES RF / Ramses Extras import** (toolbar → **Devices** → *RAMSES RF / Ramses Extras*): adds evohome / RAMSES-II
-  devices as markers. Reads live from Ramses Extras'
-  `ramses_extras/floorplan_helper/get_topology` WebSocket command, falling back to the HA
-  device/entity registries filtered to `ramses_cc` when Extras isn't installed. Offline it accepts a
-  pasted/loaded topology, a `floorplan_seed_studio` response or studio project (merged into the
-  current project, rooms included, scaled to the canvas), or any text with device ids
-  (`known_list`, schema, packet log). Devices land in the room mapped to their HA area (room
-  `areaId` or name), otherwise in a staging row on the floor matching the area's HA floor; class
-  icons, group colours, optional extra entities and state rules (offline, battery low, window
-  open, heat demand). Idempotent and one undo step. Works in both token and dashboard-card mode.
+- **Device import** (toolbar → **Devices**): adds devices from any registered device source as
+  markers. Ships with an HA-registry source (every device, grouped by integration) as the reference
+  implementation; RAMSES RF / Ramses Extras ships its own provider. Offline it accepts pasted/loaded
+  input any registered source recognises, or a studio project (merged into the current project,
+  rooms included, scaled to the canvas). Devices land in the room mapped to their HA area (room
+  `areaId` or name), otherwise in a staging row on the floor matching the area's HA floor; icons,
+  colours, optional extra entities and state rules. Idempotent and one undo step. Works in both
+  token and dashboard-card mode.
 - **Inline SVG delivery for ha-floorplan (no file copy)**: the export can now
   embed the whole floorplan SVG straight into the card as a `data:` URI
   (`config.image: { location: data:image/svg+xml…, cache: true }`), so there are
