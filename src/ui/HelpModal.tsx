@@ -22,13 +22,15 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           </li>
         </ul>
 
-        <h3>2b · Import RAMSES RF / Ramses Extras devices</h3>
+        <h3>2b · Import devices (registered integrations)</h3>
         <ul>
           <li>Draw your rooms first and set each room's <em>HA area</em> (or name it like the area).</li>
-          <li>Click <strong>RAMSES</strong> → <em>Read RAMSES devices</em> (needs the HA link). Uses Ramses Extras'
-            floorplan helper when installed, otherwise the ramses_cc integration directly.</li>
-          <li>Offline: paste or load a <code>get_topology</code> result, a <code>floorplan_seed_studio</code>
-            response, or a ramses_cc <code>known_list</code> / schema.</li>
+          <li>Click <strong>Devices</strong> → pick a source (needs the HA link). Sources are contributed by
+            integrations via <code>floorplanStudio.registerPlugin</code> — e.g. the bundled RAMSES RF source
+            uses Ramses Extras' floorplan helper when installed, otherwise ramses_cc directly.</li>
+          <li>Offline: paste or load whatever a source recognises — a studio project JSON, or the
+            integration's own export (for RAMSES: a <code>get_topology</code> result, a
+            <code>floorplan_seed_studio</code> response, or a ramses_cc <code>known_list</code> / schema).</li>
           <li>Devices land in their room; the rest wait in a staging row at the bottom. One Ctrl+Z undoes it,
             and re-running only adds devices that aren't on the plan yet.</li>
         </ul>

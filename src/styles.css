@@ -102,6 +102,24 @@ pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto
 .fp-mode { background: var(--panel-2); border-radius: 6px; padding: 2px; gap: 2px; }
 .fp-mode button { border: none; background: transparent; }
 
+/* Integrations dropdown (plugin toolbar actions, grouped by plugin) */
+.fp-menu-wrap { position: relative; }
+.fp-menu-backdrop { position: fixed; inset: 0; z-index: 60; }
+.fp-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 70;
+  min-width: 190px; padding: 4px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+}
+.fp-menu-group + .fp-menu-group { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.fp-menu-head { font-size: 11px; color: var(--muted); padding: 4px 8px 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+.fp-menu-item {
+  display: flex; align-items: center; width: 100%; gap: 6px;
+  background: none; border: 0; color: var(--text);
+  padding: 6px 8px; border-radius: 4px; text-align: left; cursor: pointer;
+}
+.fp-menu-item:hover { background: var(--panel); }
+
 /* Canvas ------------------------------------------------------------------ */
 .fp-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
 .fp-preview-badge {
