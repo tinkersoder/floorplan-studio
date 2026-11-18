@@ -10,6 +10,7 @@ import {
   EVENT_ACTION,
   EVENT_PLUGINS_CHANGED,
   EVENT_PROJECT_IMPORTED,
+  EVENT_READY,
   PluginsChangedDetail,
   ProjectImportedDetail,
 } from './types';
@@ -32,4 +33,9 @@ export function emitProjectImported(detail: ProjectImportedDetail): void {
 /** The registered plugin set changed (register/unregister). */
 export function emitPluginsChanged(detail: PluginsChangedDetail): void {
   emit(EVENT_PLUGINS_CHANGED, detail);
+}
+
+/** `window.floorplanStudio` is installed and the plugin queue drained. */
+export function emitReady(detail: { apiVersion: number }): void {
+  emit(EVENT_READY, detail);
 }

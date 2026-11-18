@@ -11,7 +11,7 @@ import { deleteProject, listProjects, loadProject, saveProject } from '../persis
 import { useStore } from '../state/store';
 import type { Project } from '../model/schema';
 import { applyMerge, planProjectMerge } from '../import/plan';
-import { emitProjectImported } from './events';
+import { emitProjectImported, emitReady } from './events';
 import {
   getActions,
   getDeviceSources,
@@ -27,6 +27,7 @@ import {
   EVENT_ACTION,
   EVENT_PLUGINS_CHANGED,
   EVENT_PROJECT_IMPORTED,
+  EVENT_READY,
   PLUGIN_API_VERSION,
   PluginManifest,
   WsCall,
@@ -93,7 +94,7 @@ export interface FloorplanStudioApi {
   /** call the active HA WebSocket (throws when not connected) */
   callWS: WsCall;
   /** documented event names — listeners addEventListener on window */
-  events: { ACTION: string; PROJECT_IMPORTED: string; PLUGINS_CHANGED: string };
+  events: { ACTION: string; PROJECT_IMPORTED: string; PLUGINS_CHANGED: string; READY: string };
   /** replace the direct IndexedDB pokes integrations used to need */
   projects: {
     /** the currently open project (live store reference — do not mutate) */
@@ -117,10 +118,50 @@ export interface FloorplanStudioApi {
   };
 }
 
+/**
+ * Something a plugin can push before the editor has loaded: a manifest to
+ * register, or a callback that receives the API once it exists.
+ */
+export type QueuedPluginItem = PluginManifest | ((api: FloorplanStudioApi) => void);
+
+/** Array-like queue; after install, `push` runs items immediately. */
+export interface PluginQueue {
+  push: (...items: QueuedPluginItem[]) => number;
+}
+
 declare global {
   interface Window {
     floorplanStudio?: FloorplanStudioApi;
+    /**
+     * Load-order-safe registration. Lovelace resources load in no guaranteed
+     * order, so plugins should do
+     * `(window.floorplanStudioQueue ||= []).push(manifest)` instead of calling
+     * `window.floorplanStudio.registerPlugin` directly.
+     */
+    floorplanStudioQueue?: PluginQueue; // a plain array satisfies this too
   }
+}
+
+function runQueued(api: FloorplanStudioApi, item: QueuedPluginItem): void {
+  try {
+    if (typeof item === 'function') item(api);
+    else api.registerPlugin(item);
+  } catch (e) {
+    console.error('[floorplan-studio] queued plugin item failed', e);
+  }
+}
+
+/** Drain anything pushed before install, then make later pushes run immediately. */
+function drainQueue(api: FloorplanStudioApi): void {
+  const pending: unknown = window.floorplanStudioQueue;
+  const live: PluginQueue = {
+    push: (...items) => {
+      for (const item of items) runQueued(api, item);
+      return 0;
+    },
+  };
+  window.floorplanStudioQueue = live;
+  if (Array.isArray(pending)) for (const item of pending as QueuedPluginItem[]) runQueued(api, item);
 }
 
 /** Attach `window.floorplanStudio`. Safe to call from every entry point. */
@@ -137,6 +178,7 @@ export function installPluginApi(): FloorplanStudioApi {
       ACTION: EVENT_ACTION,
       PROJECT_IMPORTED: EVENT_PROJECT_IMPORTED,
       PLUGINS_CHANGED: EVENT_PLUGINS_CHANGED,
+      READY: EVENT_READY,
     },
     projects: {
       active: () => useStore.getState().project,
@@ -162,5 +204,7 @@ export function installPluginApi(): FloorplanStudioApi {
     },
   };
   window.floorplanStudio = api;
+  drainQueue(api);
+  emitReady({ apiVersion: PLUGIN_API_VERSION });
   return api;
 }

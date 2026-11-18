@@ -167,6 +167,8 @@ export interface PluginManifest {
 export const EVENT_ACTION = 'floorplan-studio:action';
 export const EVENT_PROJECT_IMPORTED = 'floorplan-studio:project-imported';
 export const EVENT_PLUGINS_CHANGED = 'floorplan-studio:plugins-changed';
+/** fired once on `window` when `window.floorplanStudio` is installed */
+export const EVENT_READY = 'floorplan-studio:ready';
 
 export interface ActionEventDetail {
   pluginId: string;
